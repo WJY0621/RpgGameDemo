@@ -1,0 +1,60 @@
+# --- Root Ignore ---
+# Ignore everything at root
+/*
+
+# --- Unignore Special Files ---
+!/.gitignore
+!/README.md
+
+# --- Unignore Assets Structure ---
+!/Assets/
+
+# --- Ignore Everything inside Assets ---
+/Assets/*
+
+# --- Unignore Specific Assets Folders ---
+!/Assets/Scripts/
+!/Assets/Editor Default Resources/
+
+# --- Ignore Everything inside Scripts ---
+/Assets/Scripts/*
+
+# --- Unignore Specific Script Folders ---
+!/Assets/Scripts/GameCore/
+!/Assets/Scripts/Manager/
+!/Assets/Scripts/Utils/
+
+# --- Unity Standard Ignores (Just in case specific rules leak) ---
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+.vs/
+.gradle/
+.idea/
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+sysinfo.txt
+*.apk
+*.aab
+*.unitypackage
+crashlytics-build.properties
