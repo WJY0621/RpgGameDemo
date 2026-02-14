@@ -1,8 +1,0 @@
-:root
-{
-    --dl-colors-grid-light-grey-1: #2b2b2b;
-    --dl-colors-grid-light-grey-2: rgba(52, 52, 52, 0.5);
-    --dl-colors-grid-light-grey-3: rgba(59, 59, 59, 1);
-
-    --dl-metrics-grid-25: 25;
-}
