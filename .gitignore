@@ -1,6 +1,6 @@
 # --- Root Ignore ---
-# Ignore everything by default
-*
+# Ignore everything at root
+/*
 
 # --- Unignore Special Files ---
 !/.gitignore
@@ -37,7 +37,6 @@
 .gradle/
 .idea/
 .vscode/
-.trae/
 *.csproj
 *.unityproj
 *.sln
