@@ -61,7 +61,52 @@ public class TimeMgr : MonoBehaviour
             Destroy(gameObject);
         }
 
+        // 每次场景加载时自动查找 SunLight
+        FindSunLight();
+
         Initialize();
+    }
+
+    private void OnEnable()
+    {
+        // 场景加载完成后，再次查找 SunLight
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+    {
+        // 场景加载完成后，自动查找 SunLight
+        FindSunLight();
+    }
+
+    private void FindSunLight()
+    {
+        // 如果 sunLight 为空，尝试在场景中查找
+        if (sunLight == null)
+        {
+            // 查找 Directional Light
+            Light[] lights = FindObjectsOfType<Light>();
+            foreach (Light light in lights)
+            {
+                if (light.type == LightType.Directional)
+                {
+                    sunLight = light;
+                    Debug.Log($"[TimeMgr] Found SunLight: {light.name}");
+                    break;
+                }
+            }
+
+            // 如果还是找不到，创建一个
+            if (sunLight == null)
+            {
+                Debug.LogWarning("[TimeMgr] No Directional Light found in scene!");
+            }
+        }
     }
 
     private void Initialize()

@@ -55,7 +55,7 @@ public class FileMgr
     {
         if (gameFileData == null)
         {
-            Debug.LogError("gameFileData is null! Cannot save.");
+            Debug.LogError("[FileMgr] gameFileData is null! Cannot save.");
             return false;
         }
 
@@ -64,46 +64,67 @@ public class FileMgr
 
         string resultPath = filePath + "gameSaveData.sav";
         string jsonData = JsonUtility.ToJson(gameFileData, true);
+
+        Debug.Log($"[FileMgr] SaveGameFile: filePath = {resultPath}");
+
         if (!File.Exists(resultPath))
         {
             Directory.CreateDirectory(filePath);
         }
         File.WriteAllText(resultPath, jsonData);
         GameMgr.Instance.firstEnterGame = false;
+
+        Debug.Log($"[FileMgr] SaveGameFile successful! File exists: {File.Exists(resultPath)}");
         return true;
     }
 
     // 创建新存档
-    public void CreateNewGame()
+    public void CreateNewGame(string playerName = "Player")
     {
-        if (gameFileData == null) gameFileData = new GameFileData();
-        if (gameFileData.gameFiles == null) gameFileData.gameFiles = new List<GameFile>();
+        Debug.Log($"[FileMgr] CreateNewGame called with playerName: '{playerName}'");
+
+        if (gameFileData == null)
+        {
+            Debug.Log("[FileMgr] gameFileData is null, creating new instance...");
+            gameFileData = new GameFileData();
+        }
+        if (gameFileData.gameFiles == null)
+        {
+            Debug.Log("[FileMgr] gameFileData.gameFiles is null, creating new list...");
+            gameFileData.gameFiles = new List<GameFile>();
+        }
 
         GameFile newSave = new GameFile();
         // 使用时间戳作为唯一文件名
         newSave.fileName = "Save_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        newSave.createTime = System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        newSave.playerName = playerName;
+        newSave.createTime = System.DateTime.Now.ToString("yyyy-MM-dd");
         newSave.lastScene = "GameScene"; // 默认进入 GameScene
-        
+
+        Debug.Log($"[FileMgr] Creating save: fileName={newSave.fileName}, playerName={playerName}");
+
         // 初始化玩家数据
         if (GameMgr.Instance.playerInitialData != null)
         {
+            Debug.Log("[FileMgr] Using playerInitialData to initialize player data");
             newSave.playerData = GameMgr.Instance.playerInitialData.GetPlayerInitialData();
         }
         else
         {
+            Debug.LogWarning("[FileMgr] playerInitialData is null, using default PlayerData!");
             newSave.playerData = new PlayerData(); // 防止空引用
         }
 
         gameFileData.gameFiles.Add(newSave);
         gameFileData.currentGameFileName = newSave.fileName;
-        
+
         GameMgr.Instance.firstEnterGame = true;
-        
+
+        Debug.Log("[FileMgr] Calling SaveGameFile...");
         // 立即保存到磁盘
         SaveGameFile();
-        
-        Debug.Log($"Created new save: {newSave.fileName}");
+
+        Debug.Log($"[FileMgr] Created new save: {newSave.fileName}, PlayerName: {playerName}");
     }
 
     public bool LoadGameFile()
@@ -153,7 +174,24 @@ public class FileMgr
             GameMgr.Instance.playerData = CurrentGameFile.playerData;
             return true;
         }
-        
+
         return false;
+    }
+
+    // 清空所有存档
+    public void ClearAllSaves()
+    {
+        gameFileData = new GameFileData();
+        gameFileData.gameFiles = new List<GameFile>();
+        gameFileData.currentGameFileName = null;
+
+        // 删除存档文件
+        string resultPath = filePath + "gameSaveData.sav";
+        if (File.Exists(resultPath))
+        {
+            File.Delete(resultPath);
+        }
+
+        Debug.Log("All saves cleared.");
     }
 }
