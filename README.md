@@ -3,7 +3,9 @@
 > 一个人独立开发的 Unity 3D 动作 RPG / 生存建造游戏 —— 从**客户端**、**自研后端**、**联机同步**到**热更新**全栈实现。
 > 涵盖角色控制、战斗、任务、对话、背包装备、建造、采集、Boss、联机、热更等完整系统。
 
-**🎬 演示视频：（待补充）　|　🛠 技术栈：** Unity · C# · Netcode for GameObjects · Addressables · UniTask · Lua · ASP.NET Core
+**🎬 演示视频：（待补充）　|　📄 个人简历：** [WangJiayao_Resume.pdf](WangJiayao_Resume.pdf)
+
+**🛠 技术栈：** Unity · C# · Netcode for GameObjects · Addressables · UniTask · Lua · ASP.NET Core
 
 ---
 
