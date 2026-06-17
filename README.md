@@ -3,7 +3,7 @@
 > 一个人独立开发的 Unity 3D 动作 RPG / 生存建造游戏 —— 从**客户端**、**自研后端**、**联机同步**到**热更新**全栈实现。
 > 涵盖角色控制、战斗、任务、对话、背包装备、建造、采集、Boss、联机、热更等完整系统。
 
-**🎬 演示视频：（待补充）　|　📄 个人简历：** [WangJiayao_Resume.pdf](WangJiayao_Resume.pdf)
+**🎬 演示视频：（待补充）　|　📄 个人简历：** 见 [文末预览](#-个人简历)　·　[PDF 下载](https://github.com/WJY0621/RpgGameDemo/raw/main/WangJiayao_Resume.pdf)
 
 **🛠 技术栈：** Unity · C# · Netcode for GameObjects · Addressables · UniTask · Lua · ASP.NET Core
 
@@ -79,6 +79,14 @@ cd WorkDemoServer
 dotnet run        # 默认监听 http://127.0.0.1:5188
 ```
 > 服务端不可用时，客户端会静默降级使用包内基线数据，不影响进入游戏。
+
+---
+
+## 📄 个人简历
+
+![王家尧 · 游戏客户端开发简历](WangJiayao_Resume.png)
+
+> [📥 下载 PDF 版简历](https://github.com/WJY0621/RpgGameDemo/raw/main/WangJiayao_Resume.pdf)
 
 ---
 
