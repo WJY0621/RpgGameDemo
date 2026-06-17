@@ -55,13 +55,21 @@ public class TipPanel : BasePanel
     {
         onEnsureCallback = onEnsure;
         onBackCallback = onBack;
-        
+
         var textComp = UITipContent.GetComponent<Text>();
         if (textComp != null) textComp.text = tip;
         else
         {
             var tmpComp = UITipContent.GetComponent<TMPro.TextMeshProUGUI>();
             if (tmpComp != null) tmpComp.text = tip;
+        }
+
+        // 先检查 TipPanel 是否已经显示
+        TipPanel existingPanel = GameMgr.UI.GetPanelWithoutLoad<TipPanel>();
+        if (existingPanel != null)
+        {
+            existingPanel.Show();
+            return;
         }
 
         await GameMgr.UI.ShowPanel<TipPanel>();

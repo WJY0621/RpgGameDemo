@@ -1,57 +1,110 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class ItemInfoPanel : BasePanel
 {
+    public enum InfoOwner
+    {
+        None,
+        PackageHover,
+        EquipHover,
+        EquipSelected
+    }
+
     private Transform UIItemName;
+    private Transform UIItemTextBG;
     private Transform UIItemInfo;
     private Transform UIItemDescription;
+    private Transform UIItemInfoText;
+    private Transform UIItemDescriptionText;
     private Transform UIUseButton;
     private Transform UIDiscardButton;
+    private InfoOwner currentOwner = InfoOwner.None;
+
+    private const float ItemDescriptionMinTextHeight = 60f;
+    private const float SkillInfoMinTextHeight = 80f;
+    private const float SectionPaddingHeight = 20f;
+
+    public bool IsLockedByEquipSelection => currentOwner == InfoOwner.EquipSelected;
+    public InfoOwner CurrentOwner => currentOwner;
 
     public override void Init()
     {
         InitUIName();
         InitClick();
+        ConfigureAsDisplayOnly();
     }
 
     public override void Hide(UnityEngine.Events.UnityAction callBack = null)
     {
-        // 重写 Hide 方法，实现立即隐藏，不进行渐隐动画
-        var cg = GetComponent<CanvasGroup>();
+        CanvasGroup cg = GetComponent<CanvasGroup>();
         if (cg != null)
         {
-            cg.alpha = 0;
+            cg.alpha = 0f;
+            cg.blocksRaycasts = false;
+            cg.interactable = false;
         }
-        // 直接调用回调，立即禁用 GameObject
+
+        currentOwner = InfoOwner.None;
         callBack?.Invoke();
     }
 
     public void UpdatePanelInfo(Item item)
     {
-        // 先确保初始化完成
-        if (UIItemName == null) InitUIName();
+        if (item == null)
+        {
+            return;
+        }
 
-        // 统一处理 TextMeshProUGUI 和 Text
+        if (UIItemName == null)
+        {
+            InitUIName();
+        }
+
         SetText(UIItemName, item.name);
-        SetText(UIItemDescription, item.description);
-        SetText(UIItemInfo, item.functionDescription);
+        SetText(UIItemDescriptionText, item.description);
+        SetText(UIItemInfoText, item.functionDescription);
+        UpdateSkillInfoVisibility(item);
+        RefreshDynamicSectionHeights();
     }
 
-    private void SetText(Transform trans, string content)
+    public bool CanBeOverriddenBy(InfoOwner owner)
     {
-        if (trans == null) return;
-        var tmp = trans.GetComponent<TextMeshProUGUI>();
+        return true;
+    }
+
+    public void SetOwner(InfoOwner owner)
+    {
+        currentOwner = owner;
+    }
+
+    public bool TryHideFrom(InfoOwner owner)
+    {
+        if (currentOwner != owner)
+        {
+            return false;
+        }
+
+        GameMgr.UI.HidePanel<ItemInfoPanel>();
+        return true;
+    }
+
+    private static void SetText(Transform trans, string content)
+    {
+        if (trans == null)
+        {
+            return;
+        }
+
+        TextMeshProUGUI tmp = trans.GetComponent<TextMeshProUGUI>();
         if (tmp != null)
         {
             tmp.text = content;
             return;
         }
-        var txt = trans.GetComponent<Text>();
+
+        Text txt = trans.GetComponent<Text>();
         if (txt != null)
         {
             txt.text = content;
@@ -61,24 +114,100 @@ public class ItemInfoPanel : BasePanel
     private void InitUIName()
     {
         UIItemName = transform.Find("ItemName");
-        UIItemInfo = transform.Find("SkillInfo");
-        UIItemDescription = transform.Find("ItemInfo");
+        UIItemTextBG = transform.Find("ItemTextBG");
+        UIItemDescription = transform.Find("ItemTextBG/ItemDescription");
+        UIItemDescriptionText = transform.Find("ItemTextBG/ItemDescription/ItemDescriptionText");
+        UIItemInfo = transform.Find("ItemTextBG/SkillInfo");
+        UIItemInfoText = transform.Find("ItemTextBG/SkillInfo/SkillInfoText");
         UIUseButton = transform.Find("UseButton");
         UIDiscardButton = transform.Find("DiscardButton");
     }
+
+    private void RefreshDynamicSectionHeights()
+    {
+        RefreshSectionHeight(UIItemDescription, UIItemDescriptionText, ItemDescriptionMinTextHeight);
+        if (UIItemInfo != null && UIItemInfo.gameObject.activeSelf)
+        {
+            RefreshSectionHeight(UIItemInfo, UIItemInfoText, SkillInfoMinTextHeight);
+        }
+
+        if (UIItemTextBG != null)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(UIItemTextBG as RectTransform);
+        }
+
+        LayoutRebuilder.ForceRebuildLayoutImmediate(transform as RectTransform);
+        Canvas.ForceUpdateCanvases();
+    }
+
+    private static void RefreshSectionHeight(Transform sectionRoot, Transform textRoot, float minTextHeight)
+    {
+        if (sectionRoot == null || textRoot == null)
+        {
+            return;
+        }
+
+        RectTransform sectionRect = sectionRoot as RectTransform;
+        TextMeshProUGUI tmp = textRoot.GetComponent<TextMeshProUGUI>();
+
+        if (sectionRect == null || tmp == null)
+        {
+            return;
+        }
+
+        tmp.ForceMeshUpdate();
+        float preferredTextHeight = Mathf.Ceil(tmp.preferredHeight);
+        float targetTextHeight = Mathf.Max(minTextHeight, preferredTextHeight);
+        float targetSectionHeight = targetTextHeight + SectionPaddingHeight;
+
+        sectionRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, targetSectionHeight);
+    }
+
+    private void UpdateSkillInfoVisibility(Item item)
+    {
+        if (UIItemInfo == null)
+        {
+            return;
+        }
+
+        bool hasSkillInfo = item.itemType != ItemType.Material && !string.IsNullOrWhiteSpace(item.functionDescription);
+        UIItemInfo.gameObject.SetActive(hasSkillInfo);
+    }
+
     private void InitClick()
     {
-        if(UIUseButton) UIUseButton.GetComponent<Button>().onClick.AddListener(OnUseButtonClick);
-        if(UIDiscardButton) UIDiscardButton.GetComponent<Button>().onClick.AddListener(OnDiscardButtonClick);
+        if (UIUseButton != null)
+        {
+            UIUseButton.GetComponent<Button>().onClick.AddListener(OnUseButtonClick);
+        }
+
+        if (UIDiscardButton != null)
+        {
+            UIDiscardButton.GetComponent<Button>().onClick.AddListener(OnDiscardButtonClick);
+        }
     }
 
     private void OnDiscardButtonClick()
     {
-        
     }
 
     private void OnUseButtonClick()
     {
-        
+    }
+
+    private void ConfigureAsDisplayOnly()
+    {
+        CanvasGroup cg = GetComponent<CanvasGroup>();
+        if (cg != null)
+        {
+            cg.blocksRaycasts = false;
+            cg.interactable = false;
+        }
+
+        Graphic[] graphics = GetComponentsInChildren<Graphic>(true);
+        for (int i = 0; i < graphics.Length; i++)
+        {
+            graphics[i].raycastTarget = false;
+        }
     }
 }

@@ -11,14 +11,17 @@ public class DayChangedEvent : UnityEvent<int> { }
 
 public class TimeMgr : MonoBehaviour
 {
+    public const int DefaultStartDay = 1;
+    public const float DefaultStartTimeInHours = 8f;
+
     [Header("时间设置")]
     [Tooltip("游戏开始时的时间（小时）")]
-    [SerializeField] private float startTimeInHours = 6f;
+    [SerializeField] private float startTimeInHours = DefaultStartTimeInHours;
     [Tooltip("时间流速：现实1秒 = 游戏N秒。60表示现实24分钟=游戏24小时")]
     [SerializeField] private float timeScale = 60f;
 
     [Header("日期设置")]
-    [SerializeField] private int startDay = 1;
+    [SerializeField] private int startDay = DefaultStartDay;
 
     [Header("光照设置")]
     [SerializeField] private Light sunLight;
@@ -71,6 +74,11 @@ public class TimeMgr : MonoBehaviour
     {
         // 场景加载完成后，再次查找 SunLight
         UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void Start()
+    {
+        ApplySavedGameTimeIfAvailable();
     }
 
     private void OnDisable()
@@ -206,6 +214,53 @@ public class TimeMgr : MonoBehaviour
         CheckDayNightTransition();
         UpdateSun();
         OnTimeChanged?.Invoke(GetCurrentTimeSpan());
+    }
+
+    public void SetDateTime(int day, float hours)
+    {
+        if (float.IsNaN(hours) || float.IsInfinity(hours))
+        {
+            hours = startTimeInHours;
+        }
+
+        int normalizedDay = Mathf.Max(1, day);
+        while (hours >= 24f)
+        {
+            hours -= 24f;
+            normalizedDay++;
+        }
+
+        while (hours < 0f)
+        {
+            hours += 24f;
+            normalizedDay = Mathf.Max(1, normalizedDay - 1);
+        }
+
+        currentDay = normalizedDay;
+        currentTime = Mathf.Clamp(hours, 0f, 24f);
+        isDaytimeCache = IsDaytime;
+        UpdateSun();
+        OnDayChanged?.Invoke(currentDay);
+        OnTimeChanged?.Invoke(GetCurrentTimeSpan());
+    }
+
+    public void ResetToStartTime()
+    {
+        SetDateTime(startDay, startTimeInHours);
+    }
+
+    public void ResetToDefaultStartTime()
+    {
+        SetDateTime(DefaultStartDay, DefaultStartTimeInHours);
+    }
+
+    public void ApplySavedGameTimeIfAvailable()
+    {
+        GameFile file = GameMgr.File != null ? GameMgr.File.CurrentGameFile : null;
+        if (file != null && file.TryGetGameTime(out int day, out float hours))
+        {
+            SetDateTime(day, hours);
+        }
     }
 
     public void SetTimeScale(float scale)

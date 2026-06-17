@@ -1,113 +1,278 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.UI;
+using System;
+using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
-public class RoleInfoPanel : MonoBehaviour
+public class RoleInfoPanel : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
-    private Transform UITimeText;
-    private Transform UINameText;
-    private Transform UIHpText;
-    private Transform UIGoldText;
-    private Transform UIDeleteButton;
-    private Transform UISelectIcon;
+    private const string HoverSoundName = "UI_Click2";
+    private const string ClickSoundName = "UI_Hover2";
 
-    // 当前面板对应的存档数据
+    private Transform uiTimeText;
+    private Transform uiNameText;
+    private Transform uiHpText;
+    private Transform uiGoldText;
+    private Transform uiDeleteButton;
+    private Transform uiSelectIcon;
+    private Transform uiHighLightIcon;
+    private Transform uiRoleIcon;
+
     private GameFile gameFile;
-    // 是否被选中
     private bool isSelected;
+    private int iconLoadVersion;
 
-    // 选中状态改变事件
-    public System.Action<RoleInfoPanel> onSelectedChanged;
+    public Action<RoleInfoPanel> onSelectedChanged;
+    public Action<RoleInfoPanel> onDeleted;
 
-    void Awake()
+    private void Awake()
     {
-        InitUIName();
-        InitClick();
+        InitUI();
     }
 
-    private void InitUIName()
+    private void InitUI()
     {
-        UITimeText = transform.Find("TimeText");
-        UINameText = transform.Find("NameText");
-        UIHpText = transform.Find("HpText");
-        UIGoldText = transform.Find("GoldText");
-        UIDeleteButton = transform.Find("DeleteButton");
-        UISelectIcon = transform.Find("SelectIcon");
+        uiTimeText = transform.Find("TimeText");
+        uiNameText = transform.Find("NameText");
+        uiHpText = transform.Find("HpText");
+        uiGoldText = transform.Find("GoldText");
+        uiDeleteButton = transform.Find("DeleteButton");
+        uiSelectIcon = transform.Find("SelectIcon");
+        uiHighLightIcon = transform.Find("HighLightIcon");
+        uiRoleIcon = transform.Find("RoleIcon");
 
-        // 初始时隐藏选中图标
+        ConfigureRoleIconOverlay();
         SetSelectIconVisible(false);
+        SetHighLightIconVisible(false);
 
-        // 添加整个面板的点击事件
-        Button panelButton = GetComponent<Button>();
-        if (panelButton == null)
-            panelButton = gameObject.AddComponent<Button>();
+        if (uiDeleteButton != null)
+        {
+            AddClickEvent(uiDeleteButton.gameObject, OnDeleteButtonClick);
+        }
 
-        panelButton.onClick.AddListener(OnPanelClick);
+        AddClickEvent(gameObject, OnPanelClicked);
     }
 
-    private void InitClick()
+    private static void AddClickEvent(GameObject target, Action callback)
     {
-        if (UIDeleteButton != null)
-            UIDeleteButton.GetComponent<Button>().onClick.AddListener(OnDeleteButtonClick);
+        if (target == null)
+        {
+            return;
+        }
+
+        EventTrigger trigger = target.GetComponent<EventTrigger>();
+        if (trigger == null)
+        {
+            trigger = target.AddComponent<EventTrigger>();
+        }
+
+        EventTrigger.Entry entry = new EventTrigger.Entry
+        {
+            eventID = EventTriggerType.PointerClick
+        };
+        entry.callback.AddListener(_ => callback?.Invoke());
+        trigger.triggers.Add(entry);
     }
 
-    public void SetData(GameFile gameFile, string roleName, string createTime)
+    private void OnPanelClicked()
+    {
+        PlayClickSound();
+        onSelectedChanged?.Invoke(this);
+    }
+
+    public async void SetData(GameFile gameFile, string roleName, string createTime)
     {
         this.gameFile = gameFile;
+        int loadVersion = ++iconLoadVersion;
+        ClearRoleIcon();
 
-        // 使用 TMP_Text 组件
-        if (UINameText != null)
+        SetTMPText(uiNameText, roleName);
+        SetTMPText(uiTimeText, createTime);
+
+        int maxHp = gameFile != null && gameFile.playerData != null ? gameFile.playerData.GetMaxHP() : 0;
+        int currentGold = gameFile != null ? gameFile.gold : 0;
+
+        SetTMPText(uiHpText, maxHp.ToString());
+        SetTMPText(uiGoldText, currentGold.ToString());
+
+        await LoadRoleIcon(loadVersion, gameFile);
+    }
+
+    private async Task LoadRoleIcon(int loadVersion, GameFile sourceFile)
+    {
+        if (gameFile == null || string.IsNullOrEmpty(gameFile.roleModelName) || uiRoleIcon == null)
         {
-            TMP_Text textComp = UINameText.GetComponent<TMP_Text>();
-            if (textComp != null)
-                textComp.text = roleName;
-            else
-                Debug.LogWarning("[RoleInfoPanel] UINameText has no TMP_Text component!");
+            return;
         }
 
-        if (UITimeText != null)
+        string modelName = gameFile.roleModelName;
+        bool isMale = modelName.Contains("_Man_");
+        int roleID = 1;
+
+        string[] parts = modelName.Split('_');
+        if (parts.Length >= 3 && int.TryParse(parts[parts.Length - 1], out int id))
         {
-            TMP_Text textComp = UITimeText.GetComponent<TMP_Text>();
-            if (textComp != null)
-                textComp.text = createTime;
-            else
-                Debug.LogWarning("[RoleInfoPanel] UITimeText has no TMP_Text component!");
+            roleID = id;
+        }
+
+        string sexPrefix = isMale ? "Man" : "Women";
+        string iconName = $"Role_{sexPrefix}_Icon_{roleID:D2}";
+
+        Sprite iconSprite = await GameMgr.IconAtlas.GetRoleIcon(iconName);
+        if (loadVersion != iconLoadVersion || gameFile != sourceFile || this == null || uiRoleIcon == null)
+        {
+            return;
+        }
+
+        if (iconSprite == null)
+        {
+            return;
+        }
+
+        Image roleIconImage = uiRoleIcon.GetComponent<Image>();
+        if (roleIconImage != null)
+        {
+            ApplyRoleIconSprite(roleIconImage, iconSprite);
         }
     }
 
-    // 设置选中状态
+    private void ClearRoleIcon()
+    {
+        if (uiRoleIcon == null)
+        {
+            return;
+        }
+
+        Image roleIconImage = uiRoleIcon.GetComponent<Image>();
+        if (roleIconImage == null)
+        {
+            return;
+        }
+
+        roleIconImage.sprite = null;
+        roleIconImage.overrideSprite = null;
+        roleIconImage.enabled = false;
+        roleIconImage.SetAllDirty();
+    }
+
+    private void ConfigureRoleIconOverlay()
+    {
+        if (uiRoleIcon == null)
+        {
+            return;
+        }
+
+        Image[] images = uiRoleIcon.GetComponentsInChildren<Image>(true);
+        foreach (Image image in images)
+        {
+            image.raycastTarget = false;
+            image.canvasRenderer.cullTransparentMesh = false;
+            image.SetAllDirty();
+        }
+    }
+
+    private static void ApplyRoleIconSprite(Image image, Sprite sprite)
+    {
+        image.sprite = sprite;
+        image.overrideSprite = sprite;
+        image.color = Color.white;
+        image.material = null;
+        image.type = Image.Type.Simple;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+        image.canvasRenderer.cullTransparentMesh = false;
+        image.enabled = sprite != null;
+        image.SetAllDirty();
+    }
+
     public void SetSelected(bool selected)
     {
         isSelected = selected;
         SetSelectIconVisible(selected);
+        SetHighLightIconVisible(false);
     }
 
-    // 获取是否选中
     public bool IsSelected => isSelected;
 
-    // 获取关联的存档数据
     public GameFile GetGameFile() => gameFile;
 
-    // 设置选中图标显示/隐藏
+    private void OnDestroy()
+    {
+        iconLoadVersion++;
+        onSelectedChanged = null;
+        onDeleted = null;
+    }
+
     private void SetSelectIconVisible(bool visible)
     {
-        if (UISelectIcon != null)
+        if (uiSelectIcon != null)
         {
-            UISelectIcon.gameObject.SetActive(visible);
+            uiSelectIcon.gameObject.SetActive(visible);
         }
     }
 
-    // 面板点击事件
-    private void OnPanelClick()
+    private void SetHighLightIconVisible(bool visible)
     {
-        // 通知 ChooseRolePanel 改变选中状态
-        onSelectedChanged?.Invoke(this);
+        if (uiHighLightIcon == null)
+        {
+            return;
+        }
+
+        uiHighLightIcon.gameObject.SetActive(!isSelected && visible);
     }
 
-    private void OnDeleteButtonClick()
+    private async void OnDeleteButtonClick()
     {
+        PlayClickSound();
+        await GameMgr.UI.ShowPanel<TipPanel>();
+        TipPanel tipPanel = GameMgr.UI.GetPanelWithoutLoad<TipPanel>();
+        if (tipPanel == null)
+        {
+            return;
+        }
 
+        await tipPanel.ShowTip("是否要删除此存档？", () =>
+        {
+            if (gameFile != null && GameMgr.File.gameFileData != null)
+            {
+                GameMgr.File.gameFileData.gameFiles.Remove(gameFile);
+                GameMgr.File.SaveGameFile();
+            }
+
+            onDeleted?.Invoke(this);
+            Destroy(gameObject);
+        }, () => { });
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        GameMgr.Audio?.PlayUIEffect(HoverSoundName);
+        SetHighLightIconVisible(true);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        SetHighLightIconVisible(false);
+    }
+
+    private static void SetTMPText(Transform target, string content)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        TMP_Text textComp = target.GetComponent<TMP_Text>();
+        if (textComp != null)
+        {
+            textComp.text = content;
+        }
+    }
+
+    private static void PlayClickSound()
+    {
+        GameMgr.Audio?.PlayUIEffect(ClickSoundName);
     }
 }

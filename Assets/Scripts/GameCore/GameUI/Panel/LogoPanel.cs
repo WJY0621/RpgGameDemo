@@ -8,7 +8,7 @@ public class LogoPanel : BasePanel
     public TMP_Text logoText;
     public override void Init()
     {
-        SetAlphaSpeed(1.0f);
+        SetAlphaSpeed(10.0f);
     }
     protected override void Awake()
     {

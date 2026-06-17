@@ -1,0 +1,206 @@
+{
+    "items": [
+        {
+            "monsterID": 1,
+            "monsterName": "成精的蘑菇",
+            "modelName": "Monster_MoGu",
+            "HP": 100,
+            "ATK": 10,
+            "DEF": 5,
+            "moveSpeed": 3.0,
+            "alertRange": 8.0,
+            "chaseRange": 12.0,
+            "attackRange": 2.0,
+            "loseTargetRange": 18.0,
+            "goldDrop": "1_5",
+            "dropItems": [
+                {
+                    "itemID": 2007,
+                    "dropChance": 50.0,
+                    "amount": 1
+                }
+            ]
+        },
+        {
+            "monsterID": 2,
+            "monsterName": "食人花",
+            "modelName": "Monster_Flower",
+            "HP": 150,
+            "ATK": 15,
+            "DEF": 5,
+            "moveSpeed": 4.0,
+            "alertRange": 8.0,
+            "chaseRange": 12.0,
+            "attackRange": 2.0,
+            "loseTargetRange": 18.0,
+            "goldDrop": "5_10",
+            "dropItems": [
+                {
+                    "itemID": 3001,
+                    "dropChance": 20.0,
+                    "amount": 1
+                },
+                {
+                    "itemID": 3008,
+                    "dropChance": 30.0,
+                    "amount": 1
+                }
+            ]
+        },
+        {
+            "monsterID": 3,
+            "monsterName": "食人魔",
+            "modelName": "Monster_ShiRen",
+            "HP": 180,
+            "ATK": 20,
+            "DEF": 10,
+            "moveSpeed": 4.0,
+            "alertRange": 8.0,
+            "chaseRange": 12.0,
+            "attackRange": 2.0,
+            "loseTargetRange": 18.0,
+            "goldDrop": "10_20",
+            "dropItems": [
+                {
+                    "itemID": 3001,
+                    "dropChance": 40.0,
+                    "amount": 1
+                },
+                {
+                    "itemID": 3002,
+                    "dropChance": 40.0,
+                    "amount": 1
+                },
+                {
+                    "itemID": 3009,
+                    "dropChance": 20.0,
+                    "amount": 1
+                }
+            ]
+        },
+        {
+            "monsterID": 4,
+            "monsterName": "蝙蝠怪",
+            "modelName": "Monster_Bat",
+            "HP": 100,
+            "ATK": 15,
+            "DEF": 5,
+            "moveSpeed": 3.0,
+            "alertRange": 8.0,
+            "chaseRange": 12.0,
+            "attackRange": 2.0,
+            "loseTargetRange": 18.0,
+            "goldDrop": "5_10",
+            "dropItems": [
+                {
+                    "itemID": 3003,
+                    "dropChance": 20.0,
+                    "amount": 1
+                }
+            ]
+        },
+        {
+            "monsterID": 5,
+            "monsterName": "虎头蜂",
+            "modelName": "Monster_Bee",
+            "HP": 150,
+            "ATK": 20,
+            "DEF": 10,
+            "moveSpeed": 4.0,
+            "alertRange": 8.0,
+            "chaseRange": 12.0,
+            "attackRange": 2.0,
+            "loseTargetRange": 18.0,
+            "goldDrop": "10_20",
+            "dropItems": []
+        },
+        {
+            "monsterID": 6,
+            "monsterName": "骷髅士兵",
+            "modelName": "Monster_Skeleton",
+            "HP": 150,
+            "ATK": 15,
+            "DEF": 10,
+            "moveSpeed": 3.0,
+            "alertRange": 8.0,
+            "chaseRange": 12.0,
+            "attackRange": 2.0,
+            "loseTargetRange": 18.0,
+            "goldDrop": "10_20",
+            "dropItems": []
+        },
+        {
+            "monsterID": 7,
+            "monsterName": "机械守卫",
+            "modelName": "Monster_Bot",
+            "HP": 300,
+            "ATK": 30,
+            "DEF": 30,
+            "moveSpeed": 4.0,
+            "alertRange": 8.0,
+            "chaseRange": 12.0,
+            "attackRange": 2.0,
+            "loseTargetRange": 18.0,
+            "goldDrop": "50_100",
+            "dropItems": [
+                {
+                    "itemID": 3004,
+                    "dropChance": 20.0,
+                    "amount": 1
+                },
+                {
+                    "itemID": 3005,
+                    "dropChance": 10.0,
+                    "amount": 1
+                }
+            ]
+        },
+        {
+            "monsterID": 8,
+            "monsterName": "铁甲虫战士",
+            "modelName": "Monster_TieJia",
+            "HP": 400,
+            "ATK": 40,
+            "DEF": 25,
+            "moveSpeed": 4.0,
+            "alertRange": 8.0,
+            "chaseRange": 12.0,
+            "attackRange": 2.0,
+            "loseTargetRange": 18.0,
+            "goldDrop": "80_120",
+            "dropItems": [
+                {
+                    "itemID": 3004,
+                    "dropChance": 25.0,
+                    "amount": 1
+                },
+                {
+                    "itemID": 3005,
+                    "dropChance": 15.0,
+                    "amount": 1
+                }
+            ]
+        },
+        {
+            "monsterID": 9,
+            "monsterName": "火蜥蜴",
+            "modelName": "Monster_XiYi",
+            "HP": 200,
+            "ATK": 15,
+            "DEF": 10,
+            "moveSpeed": 4.0,
+            "alertRange": 8.0,
+            "chaseRange": 12.0,
+            "attackRange": 2.0,
+            "loseTargetRange": 18.0,
+            "goldDrop": "15_30",
+            "dropItems": [
+                {
+                    "itemID": 3010,
+                    "dropChance": 20.0,
+                    "amount": 1
+                }
+            ]
+        }
+    ]
+}

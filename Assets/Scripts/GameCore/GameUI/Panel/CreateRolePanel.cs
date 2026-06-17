@@ -8,6 +8,9 @@ using Cysharp.Threading.Tasks;
 
 public class CreateRolePanel : BasePanel
 {
+    // 当前选中的角色模型名称（用于传递给创建角色面板）
+    public static string currentSelectedRoleModelName;
+
     private Transform UIChooseSexButton;
     private Transform UIManButton;
     private Transform UIWomenButton;
@@ -37,11 +40,17 @@ public class CreateRolePanel : BasePanel
 
     // 模型控制器
     private RoleModelController modelController;
+    private int roleSelectionVersion;
 
     protected override void Awake()
     {
         base.Awake();
         Init();
+    }
+
+    private void OnDisable()
+    {
+        roleSelectionVersion++;
     }
 
     public override async void Show()
@@ -59,7 +68,6 @@ public class CreateRolePanel : BasePanel
         roleListData = await GameMgr.AssetLoader.LoadAsset<RoleListData>("RoleListData");
         if (roleListData == null || roleListData.roleList == null)
         {
-            Debug.LogError("[CreateRolePanel] Failed to load RoleListData!");
             return;
         }
 
@@ -67,17 +75,10 @@ public class CreateRolePanel : BasePanel
         roleChooseIconPrefab = await GameMgr.AssetLoader.LoadAsset<GameObject>("RoleChooseIcon");
         if (roleChooseIconPrefab == null)
         {
-            Debug.LogError("[CreateRolePanel] Failed to load RoleChooseIcon prefab!");
             return;
         }
 
-        // 预加载所有角色模型（在后台加载，切换时会是瞬间的）
-        if (modelController != null)
-        {
-            _ = modelController.PreloadAllRoleModels(roleListData);
-        }
-
-        Debug.Log($"[CreateRolePanel] Loaded {roleListData.roleList.Count} roles");
+        // 角色模型按选中项懒加载，避免打开角色界面时同时加载头像、背景和多个大模型。
     }
 
     public override void Init()
@@ -106,10 +107,6 @@ public class CreateRolePanel : BasePanel
 
         // 获取场景中的模型控制器（单例模式）
         modelController = RoleModelController.Instance;
-        if (modelController == null)
-        {
-            Debug.LogWarning("[CreateRolePanel] RoleModelController not found in scene!");
-        }
     }
 
     private void InitClick()
@@ -164,9 +161,20 @@ public class CreateRolePanel : BasePanel
         if (roleListData == null || roleChooseIconPrefab == null || roleIconContainer == null)
             return;
 
+        selectedRoleIcon = null;
+
         // 清空现有图标
         foreach (Transform child in roleIconContainer)
         {
+            RoleChooseIcon oldIcon = child.GetComponent<RoleChooseIcon>();
+            if (oldIcon != null)
+            {
+                oldIcon.onIconClick -= OnRoleIconClick;
+                oldIcon.SetVisible(false);
+                oldIcon.ClearIconSprite();
+            }
+
+            child.gameObject.SetActive(false);
             Destroy(child.gameObject);
         }
         maleRoleIcons.Clear();
@@ -201,8 +209,14 @@ public class CreateRolePanel : BasePanel
                 roleChooseIcon.onIconClick += OnRoleIconClick;
 
                 // 异步加载图标
-                _ = LoadRoleIcon(roleChooseIcon, iconName, () => {
-                    // 加载完成后显示
+                _ = LoadRoleIcon(roleChooseIcon, iconName, () =>
+                {
+                    // 图标已被销毁（如切换性别重建列表）则忽略，否则显示
+                    if (roleChooseIcon == null)
+                    {
+                        return;
+                    }
+
                     roleChooseIcon.SetVisible(true);
                 });
 
@@ -220,22 +234,35 @@ public class CreateRolePanel : BasePanel
 
     private async Task LoadRoleIcon(RoleChooseIcon icon, string iconName, System.Action onLoaded = null)
     {
+        if (icon == null)
+        {
+            return;
+        }
+
+        icon.ClearIconSprite();
+
         // 查找 UIRoleIcon
         Transform roleIconTransform = icon.transform.Find("RoleIcon");
         if (roleIconTransform == null)
             return;
 
         // 从 Addressables 加载图标
-        Sprite sprite = await GameMgr.AssetLoader.LoadAsset<Sprite>(iconName);
+        Sprite sprite = await GameMgr.IconAtlas.GetRoleIcon(iconName);
+        if (icon == null || roleIconTransform == null)
+        {
+            return;
+        }
+
         if (sprite != null)
         {
-            Image image = roleIconTransform.GetComponent<Image>();
-            if (image != null)
-                image.sprite = sprite;
+            icon.SetIconSprite(sprite);
         }
 
         // 加载完成回调
-        onLoaded?.Invoke();
+        if (icon != null)
+        {
+            onLoaded?.Invoke();
+        }
     }
 
     private void UpdateRoleIconsVisibility()
@@ -271,6 +298,7 @@ public class CreateRolePanel : BasePanel
     private async void OnRoleIconClick(RoleChooseIcon clickedIcon)
     {
         if (clickedIcon == null) return;
+        int selectionVersion = ++roleSelectionVersion;
 
         // 取消之前选中的图标
         if (selectedRoleIcon != null)
@@ -286,10 +314,15 @@ public class CreateRolePanel : BasePanel
         RoleData roleData = clickedIcon.GetRoleData();
         string roleModelName = clickedIcon.GetRoleModelName();
 
-        Debug.Log($"[CreateRolePanel] Selected role: {roleData?.roleID}, model: {roleModelName}");
+        // 更新当前选中的角色模型名称
+        currentSelectedRoleModelName = roleModelName;
 
         // 更新面板显示
-        await UpdateRoleInfoPanel(roleData);
+        await UpdateRoleInfoPanel(roleData, selectionVersion);
+        if (selectionVersion != roleSelectionVersion || clickedIcon == null || selectedRoleIcon != clickedIcon)
+        {
+            return;
+        }
 
         // 切换模型
         if (modelController != null && roleData != null && !string.IsNullOrEmpty(roleModelName))
@@ -301,7 +334,7 @@ public class CreateRolePanel : BasePanel
     /// <summary>
     /// 更新角色信息面板
     /// </summary>
-    private async Task UpdateRoleInfoPanel(RoleData roleData)
+    private async Task UpdateRoleInfoPanel(RoleData roleData, int selectionVersion)
     {
         if (roleData == null) return;
 
@@ -322,9 +355,16 @@ public class CreateRolePanel : BasePanel
             if (bkImage != null && !string.IsNullOrEmpty(roleData.roleBKName))
             {
                 Sprite bkSprite = await GameMgr.AssetLoader.LoadAsset<Sprite>(roleData.roleBKName);
+                if (selectionVersion != roleSelectionVersion)
+                {
+                    return;
+                }
+
                 if (bkSprite != null)
                 {
                     bkImage.sprite = bkSprite;
+                    bkImage.type = Image.Type.Simple;
+                    bkImage.preserveAspect = true;
                 }
             }
         }
@@ -336,9 +376,16 @@ public class CreateRolePanel : BasePanel
             if (panelBkImage != null && !string.IsNullOrEmpty(roleData.createRolePanelBKName))
             {
                 Sprite panelBkSprite = await GameMgr.AssetLoader.LoadAsset<Sprite>(roleData.createRolePanelBKName);
+                if (selectionVersion != roleSelectionVersion)
+                {
+                    return;
+                }
+
                 if (panelBkSprite != null)
                 {
                     panelBkImage.sprite = panelBkSprite;
+                    panelBkImage.type = Image.Type.Simple;
+                    panelBkImage.preserveAspect = true;
                 }
             }
         }
@@ -348,14 +395,12 @@ public class CreateRolePanel : BasePanel
     {
         // 点击完成按钮，显示输入角色姓名面板
         // CreateRolePanel 不隐藏，只是覆盖显示
-        await GameMgr.UI.ShowPanel<CreateRoleNamePanel>();
+        await GameMgr.UI.ShowPanelWithBlackAsync<CreateRoleNamePanel>();
     }
-    private void OnBackButtonClick()
+
+    private async void OnBackButtonClick()
     {
         // 返回选择角色界面
-        GameMgr.UI.HidePanel<CreateRolePanel>(async () =>
-        {
-            await GameMgr.UI.ShowPanel<ChooseRolePanel>();
-        });
+        await GameMgr.UI.SwitchPanelAsync<CreateRolePanel, ChooseRolePanel>();
     }
 }

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class RoleChooseIcon : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 {
@@ -51,6 +52,8 @@ public class RoleChooseIcon : MonoBehaviour, IPointerClickHandler, IPointerEnter
         if (UISelectIcon != null)
             UISelectIcon.gameObject.SetActive(false);
 
+        ConfigureIconImages();
+
         // 记录初始缩放
         defaultScale = transform.localScale;
     }
@@ -62,6 +65,67 @@ public class RoleChooseIcon : MonoBehaviour, IPointerClickHandler, IPointerEnter
     {
         roleData = data;
         roleModelName = modelName;
+        ClearIconSprite();
+    }
+
+    public void SetIconSprite(Sprite sprite)
+    {
+        if (UIRoleIcon == null)
+        {
+            return;
+        }
+
+        Image image = UIRoleIcon.GetComponent<Image>();
+        if (image == null)
+        {
+            return;
+        }
+
+        image.sprite = sprite;
+        image.overrideSprite = sprite;
+        image.color = Color.white;
+        image.material = null;
+        image.type = Image.Type.Simple;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+        image.canvasRenderer.cullTransparentMesh = false;
+        image.enabled = sprite != null;
+        image.SetAllDirty();
+    }
+
+    public void ClearIconSprite()
+    {
+        if (UIRoleIcon == null)
+        {
+            return;
+        }
+
+        Image image = UIRoleIcon.GetComponent<Image>();
+        if (image == null)
+        {
+            return;
+        }
+
+        image.sprite = null;
+        image.overrideSprite = null;
+        image.enabled = false;
+        image.SetAllDirty();
+    }
+
+    private void ConfigureIconImages()
+    {
+        Image[] images = GetComponentsInChildren<Image>(true);
+        foreach (Image image in images)
+        {
+            image.canvasRenderer.cullTransparentMesh = false;
+            image.SetAllDirty();
+        }
+
+        Image roleImage = UIRoleIcon != null ? UIRoleIcon.GetComponent<Image>() : null;
+        if (roleImage != null)
+        {
+            roleImage.raycastTarget = false;
+        }
     }
 
     /// <summary>
@@ -79,7 +143,6 @@ public class RoleChooseIcon : MonoBehaviour, IPointerClickHandler, IPointerEnter
     // 使用 IPointerClickHandler 处理点击
     public void OnPointerClick(PointerEventData eventData)
     {
-        Debug.Log($"[RoleChooseIcon] OnPointerClick: {gameObject.name}");
         onIconClick?.Invoke(this);
     }
 

@@ -1,0 +1,69 @@
+{
+    "items": [
+        {
+            "itemId": 1017,
+            "itemName": "金表",
+            "itemType": "Accessory",
+            "quality": "Advanced",
+            "qualityValue": 2,
+            "description": "可以显示时间",
+            "iconName": "Icon_compass",
+            "buyPrice": 500,
+            "sellPrice": 250,
+            "equipBuffIDs": [],
+            "abilities": ""
+        },
+        {
+            "itemId": 1032,
+            "itemName": "阿尔卑斯靴",
+            "itemType": "Accessory",
+            "quality": "Advanced",
+            "qualityValue": 2,
+            "description": "可以增加移动速度，并解锁二段跳的靴子",
+            "iconName": "Icon_Acc_01",
+            "buyPrice": 200,
+            "sellPrice": 100,
+            "equipBuffIDs": [],
+            "abilities": "DoubleJump"
+        },
+        {
+            "itemId": 1033,
+            "itemName": "很猛手套",
+            "itemType": "Accessory",
+            "quality": "Advanced",
+            "qualityValue": 2,
+            "description": "增加攻击速度以及攻击力",
+            "iconName": "Icon_Acc_02",
+            "buyPrice": 200,
+            "sellPrice": 100,
+            "equipBuffIDs": [],
+            "abilities": ""
+        },
+        {
+            "itemId": 1034,
+            "itemName": "十字盾",
+            "itemType": "Accessory",
+            "quality": "Advanced",
+            "qualityValue": 2,
+            "description": "提高生命力上限和防御力",
+            "iconName": "Icon_Acc_03",
+            "buyPrice": 200,
+            "sellPrice": 100,
+            "equipBuffIDs": [],
+            "abilities": ""
+        },
+        {
+            "itemId": 1035,
+            "itemName": "天使翼",
+            "itemType": "Accessory",
+            "quality": "Rare",
+            "qualityValue": 3,
+            "description": "提供飞行能力",
+            "iconName": "Icon_Acc_04",
+            "buyPrice": 1000,
+            "sellPrice": 500,
+            "equipBuffIDs": [],
+            "abilities": "Fly"
+        }
+    ]
+}

@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -19,35 +19,94 @@ public class FileMgr
         get
         {
             if (gameFileData == null) return null;
-            return gameFileData.gameFiles.Find(gf => gf.fileName == gameFileData.currentGameFileName);
+            return gameFileData.gameFiles.Find(gf =>
+                gf.fileName == gameFileData.currentGameFileName &&
+                IsVisibleForCurrentAccount(gf));
         }
+    }
+
+    public List<GameFile> GetCurrentAccountGameFiles()
+    {
+        if (gameFileData == null || gameFileData.gameFiles == null)
+        {
+            return new List<GameFile>();
+        }
+
+        string currentPlayerId = GetCurrentAccountPlayerId();
+        if (string.IsNullOrWhiteSpace(currentPlayerId))
+        {
+            return new List<GameFile>(gameFileData.gameFiles);
+        }
+
+        return gameFileData.gameFiles
+            .Where(gf => gf != null && string.Equals(gf.ownerPlayerId, currentPlayerId, System.StringComparison.Ordinal))
+            .ToList();
+    }
+
+    public void EnsureCurrentGameFileForCurrentAccount()
+    {
+        if (gameFileData == null)
+        {
+            gameFileData = new GameFileData();
+        }
+
+        if (gameFileData.gameFiles == null)
+        {
+            gameFileData.gameFiles = new List<GameFile>();
+        }
+
+        List<GameFile> accountFiles = GetCurrentAccountGameFiles();
+        GameFile current = accountFiles.Find(gf => gf.fileName == gameFileData.currentGameFileName);
+        if (current != null)
+        {
+            return;
+        }
+
+        gameFileData.currentGameFileName = accountFiles.Count > 0
+            ? accountFiles[accountFiles.Count - 1].fileName
+            : null;
     }
 
     public void UpdateFileData()
     {
         if (CurrentGameFile == null)
         {
-            Debug.LogError("CurrentGameFile is null! Cannot update save data.");
             return;
         }
 
         string activeScene = SceneManager.GetActiveScene().name;
-        // 如果是在开始菜单或 Logo 界面，不要覆盖存档中的 lastScene
+        // 濡傛灉鏄湪寮€濮嬭彍鍗曟垨 Logo 鐣岄潰锛屼笉瑕佽鐩栧瓨妗ｄ腑鐨?lastScene
         if (activeScene != "GameStartScene" && activeScene != "LogoScene" && activeScene != "InitializeScene")
         {
-            //更新最后场景
+            //鏇存柊鏈€鍚庡満鏅?
             CurrentGameFile.lastScene = activeScene;
-            //更新场景位置
+            //鏇存柊鍦烘櫙浣嶇疆
             if (GameMgr.Instance.Player != null)
             {
                 CurrentGameFile.SetLocationOnSceneLoaded(CurrentGameFile.lastScene, GameMgr.Instance.Player.transform);
             }
         }
         
-        //更新玩家数据
+        //鏇存柊鐜╁鏁版嵁
         if (GameMgr.Instance.playerData != null)
         {
-            CurrentGameFile.playerData = GameMgr.Instance.playerData;
+            CurrentGameFile.playerData = GameMgr.Instance.playerData.CreateSaveSnapshot();
+        }
+
+        if (GameMgr.Package != null)
+        {
+            CurrentGameFile.gold = GameMgr.Package.GetGold();
+            CurrentGameFile.inventoryData = GameMgr.Package.BuildSaveData();
+        }
+
+        if (GameMgr.TaskMgr != null)
+        {
+            CurrentGameFile.taskSystemData = GameMgr.TaskMgr.BuildSaveData();
+        }
+
+        if (GameMgr.Time != null)
+        {
+            CurrentGameFile.SetGameTime(GameMgr.Time);
         }
     }
 
@@ -59,7 +118,7 @@ public class FileMgr
             return false;
         }
 
-        //先更新一次再存储
+        //鍏堟洿鏂颁竴娆″啀瀛樺偍
         UpdateFileData();
 
         string resultPath = filePath + "gameSaveData.sav";
@@ -78,53 +137,127 @@ public class FileMgr
         return true;
     }
 
-    // 创建新存档
-    public void CreateNewGame(string playerName = "Player")
+    // 鍒涘缓鏂板瓨妗?
+    public void CreateNewGame(string playerName = "Player", string roleModelName = null)
     {
-        Debug.Log($"[FileMgr] CreateNewGame called with playerName: '{playerName}'");
-
         if (gameFileData == null)
         {
-            Debug.Log("[FileMgr] gameFileData is null, creating new instance...");
             gameFileData = new GameFileData();
         }
         if (gameFileData.gameFiles == null)
         {
-            Debug.Log("[FileMgr] gameFileData.gameFiles is null, creating new list...");
             gameFileData.gameFiles = new List<GameFile>();
         }
 
+        // 鐢熸垚鍞竴鐨勬枃浠跺悕
+        string fileName = "Save_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
+
+        // 妫€鏌ユ槸鍚﹀凡瀛樺湪鐩稿悓鏂囦欢鍚嶇殑瀛樻。
+        if (gameFileData.gameFiles.Any(gf => gf.fileName == fileName))
+        {
+            // 濡傛灉宸插瓨鍦紝娣诲姞姣鏁颁互纭繚鍞竴鎬?
+            fileName = "Save_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
+        }
+
         GameFile newSave = new GameFile();
-        // 使用时间戳作为唯一文件名
-        newSave.fileName = "Save_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        newSave.fileName = fileName;
+        newSave.ownerPlayerId = GetCurrentAccountPlayerId();
         newSave.playerName = playerName;
         newSave.createTime = System.DateTime.Now.ToString("yyyy-MM-dd");
-        newSave.lastScene = "GameScene"; // 默认进入 GameScene
+        newSave.lastScene = "GameScene"; // 榛樿杩涘叆 GameScene
+        newSave.roleModelName = roleModelName; // 淇濆瓨瑙掕壊妯″瀷鍚嶇О
+        newSave.gold = GameMgr.Instance.playerInitialData != null
+            ? Mathf.Max(0, GameMgr.Instance.playerInitialData.GC)
+            : 0;
+        newSave.inventoryData = new InventorySaveData();
+        newSave.inventoryData.gold = newSave.gold;
+        ApplyInitialInventoryItems(newSave.inventoryData, GameMgr.Instance.playerInitialData);
 
-        Debug.Log($"[FileMgr] Creating save: fileName={newSave.fileName}, playerName={playerName}");
-
-        // 初始化玩家数据
+        // 璁剧疆鐜╁鍒濆浣嶇疆
         if (GameMgr.Instance.playerInitialData != null)
         {
-            Debug.Log("[FileMgr] Using playerInitialData to initialize player data");
+            PlayerSceneLocation initialLocation = new PlayerSceneLocation();
+            initialLocation.sceneName = "GameScene";
+            initialLocation.position = GameMgr.Instance.playerInitialData.initialPosition;
+            initialLocation.rotation = GameMgr.Instance.playerInitialData.initialRotation;
+            newSave.playerSceneLocations.Add(initialLocation);
+        }
+
+        // 鍒濆鍖栫帺瀹舵暟鎹?
+        if (GameMgr.Instance.playerInitialData != null)
+        {
             newSave.playerData = GameMgr.Instance.playerInitialData.GetPlayerInitialData();
         }
         else
         {
-            Debug.LogWarning("[FileMgr] playerInitialData is null, using default PlayerData!");
-            newSave.playerData = new PlayerData(); // 防止空引用
+            newSave.playerData = new PlayerData(); // 闃叉绌哄紩鐢?
         }
+
+        newSave.taskSystemData = new TaskSystemSaveData();
+        newSave.SetGameTime(TimeMgr.DefaultStartDay, TimeMgr.DefaultStartTimeInHours);
 
         gameFileData.gameFiles.Add(newSave);
         gameFileData.currentGameFileName = newSave.fileName;
+        if (GameMgr.Package != null)
+        {
+            GameMgr.Package.LoadFromSaveData(newSave.inventoryData);
+        }
+
+        if (GameMgr.Instance != null)
+        {
+            GameMgr.Instance.playerData = newSave.playerData;
+        }
+
+        if (GameMgr.TaskMgr != null)
+        {
+            GameMgr.TaskMgr.LoadFromSaveData(newSave.taskSystemData);
+        }
+
+        if (GameMgr.Time != null)
+        {
+            GameMgr.Time.ResetToDefaultStartTime();
+        }
 
         GameMgr.Instance.firstEnterGame = true;
 
-        Debug.Log("[FileMgr] Calling SaveGameFile...");
-        // 立即保存到磁盘
+        // 绔嬪嵆淇濆瓨鍒扮鐩?
         SaveGameFile();
+    }
 
-        Debug.Log($"[FileMgr] Created new save: {newSave.fileName}, PlayerName: {playerName}");
+    public void ApplyCurrentGameFileToRuntime()
+    {
+        if (CurrentGameFile == null)
+        {
+            return;
+        }
+
+        GameMgr.Instance.playerData = CurrentGameFile.playerData;
+        if (CurrentGameFile.taskSystemData == null)
+        {
+            CurrentGameFile.taskSystemData = new TaskSystemSaveData();
+        }
+
+        if (CurrentGameFile.inventoryData == null)
+        {
+            CurrentGameFile.inventoryData = new InventorySaveData();
+        }
+
+        CurrentGameFile.inventoryData.gold = Mathf.Max(CurrentGameFile.inventoryData.gold, CurrentGameFile.gold);
+
+        if (GameMgr.TaskMgr != null)
+        {
+            GameMgr.TaskMgr.LoadFromSaveData(CurrentGameFile.taskSystemData);
+        }
+
+        if (GameMgr.Package != null)
+        {
+            GameMgr.Package.LoadFromSaveData(CurrentGameFile.inventoryData);
+        }
+
+        if (GameMgr.Time != null && CurrentGameFile.TryGetGameTime(out int day, out float timeInHours))
+        {
+            GameMgr.Time.SetDateTime(day, timeInHours);
+        }
     }
 
     public bool LoadGameFile()
@@ -139,13 +272,13 @@ public class FileMgr
                 string jsonData = File.ReadAllText(resultPath);
                 gameFileData = JsonUtility.FromJson<GameFileData>(jsonData);
                 
-                // 校验数据有效性
+                // 鏍￠獙鏁版嵁鏈夋晥鎬?
                 if (gameFileData != null && gameFileData.gameFiles != null && gameFileData.gameFiles.Count > 0)
                 {
-                    // 尝试获取当前存档
+                    // 灏濊瘯鑾峰彇褰撳墠瀛樻。
                     var current = gameFileData.gameFiles.Find(gf => gf.fileName == gameFileData.currentGameFileName);
                     
-                    // 如果找不到当前指向的存档，或者没有指定当前存档，就默认选最后一个（最新的）
+                    // 濡傛灉鎵句笉鍒板綋鍓嶆寚鍚戠殑瀛樻。锛屾垨鑰呮病鏈夋寚瀹氬綋鍓嶅瓨妗ｏ紝灏遍粯璁ら€夋渶鍚庝竴涓紙鏈€鏂扮殑锛?
                     if (current == null)
                     {
                         gameFileData.currentGameFileName = gameFileData.gameFiles.Last().fileName;
@@ -159,33 +292,33 @@ public class FileMgr
             }
         }
 
-        // 如果没有有效存档，或者加载失败，这里不自动创建新游戏，而是让 UI 层决定
-        // 只是确保 gameFileData 不为空，防止报错
+        // 濡傛灉娌℃湁鏈夋晥瀛樻。锛屾垨鑰呭姞杞藉け璐ワ紝杩欓噷涓嶈嚜鍔ㄥ垱寤烘柊娓告垙锛岃€屾槸璁?UI 灞傚喅瀹?
+        // 鍙槸纭繚 gameFileData 涓嶄负绌猴紝闃叉鎶ラ敊
         if (!loadSuccess)
         {
             gameFileData = new GameFileData();
             gameFileData.gameFiles = new List<GameFile>();
-            // 注意：这里不再自动 Add 一个 New Start，而是等待玩家点击“开始游戏”时调用 CreateNewGame
+            // 娉ㄦ剰锛氳繖閲屼笉鍐嶈嚜鍔?Add 涓€涓?New Start锛岃€屾槸绛夊緟鐜╁鐐瑰嚮鈥滃紑濮嬫父鎴忊€濇椂璋冪敤 CreateNewGame
         }
 
-        // 如果有当前存档，就应用数据
+        // 濡傛灉鏈夊綋鍓嶅瓨妗ｏ紝灏卞簲鐢ㄦ暟鎹?
         if (CurrentGameFile != null)
         {
-            GameMgr.Instance.playerData = CurrentGameFile.playerData;
+            ApplyCurrentGameFileToRuntime();
             return true;
         }
 
         return false;
     }
 
-    // 清空所有存档
+    // 娓呯┖鎵€鏈夊瓨妗?
     public void ClearAllSaves()
     {
         gameFileData = new GameFileData();
         gameFileData.gameFiles = new List<GameFile>();
         gameFileData.currentGameFileName = null;
 
-        // 删除存档文件
+        // 鍒犻櫎瀛樻。鏂囦欢
         string resultPath = filePath + "gameSaveData.sav";
         if (File.Exists(resultPath))
         {
@@ -194,4 +327,135 @@ public class FileMgr
 
         Debug.Log("All saves cleared.");
     }
+
+    private void ApplyInitialInventoryItems(InventorySaveData inventoryData, PlayerInitialDataSO initialData)
+    {
+        if (inventoryData == null || initialData == null || initialData.initialInventoryItems == null)
+        {
+            return;
+        }
+
+        if (inventoryData.items == null)
+        {
+            inventoryData.items = new List<InventoryItem>();
+        }
+
+        ItemJsonDatabase.EnsureLoaded();
+        Dictionary<ItemType, HashSet<int>> occupiedSlotsByType = new Dictionary<ItemType, HashSet<int>>();
+
+        for (int i = 0; i < initialData.initialInventoryItems.Length; i++)
+        {
+            PlayerInitialInventoryItem initialItem = initialData.initialInventoryItems[i];
+            if (initialItem == null || initialItem.itemId <= 0)
+            {
+                continue;
+            }
+
+            Item itemConfig = ItemJsonDatabase.GetItem(initialItem.itemId);
+            if (itemConfig == null)
+            {
+                Debug.LogWarning($"[FileMgr] Initial inventory item not found: {initialItem.itemId}");
+                continue;
+            }
+
+            int count = Mathf.Max(1, initialItem.count);
+            if (itemConfig.itemType == ItemType.Weapon)
+            {
+                for (int weaponIndex = 0; weaponIndex < count; weaponIndex++)
+                {
+                    AddInitialInventoryItem(inventoryData, itemConfig, 1, occupiedSlotsByType);
+                }
+
+                continue;
+            }
+
+            InventoryItem existingItem = inventoryData.items.Find(item =>
+                item != null &&
+                item.itemId == itemConfig.id &&
+                item.location == InventoryItemLocation.Inventory);
+
+            if (existingItem != null)
+            {
+                existingItem.count += count;
+                existingItem.isNew = true;
+                continue;
+            }
+
+            AddInitialInventoryItem(inventoryData, itemConfig, count, occupiedSlotsByType);
+        }
+    }
+
+    private void AddInitialInventoryItem(
+        InventorySaveData inventoryData,
+        Item itemConfig,
+        int count,
+        Dictionary<ItemType, HashSet<int>> occupiedSlotsByType)
+    {
+        inventoryData.items.Add(new InventoryItem
+        {
+            uid = System.Guid.NewGuid().ToString(),
+            itemId = itemConfig.id,
+            count = Mathf.Max(1, count),
+            isNew = true,
+            slotIndex = GetFirstInitialInventorySlot(inventoryData, itemConfig.itemType, occupiedSlotsByType),
+            location = InventoryItemLocation.Inventory,
+            locationKey = string.Empty
+        });
+    }
+
+    private int GetFirstInitialInventorySlot(
+        InventorySaveData inventoryData,
+        ItemType itemType,
+        Dictionary<ItemType, HashSet<int>> occupiedSlotsByType)
+    {
+        if (!occupiedSlotsByType.TryGetValue(itemType, out HashSet<int> occupiedSlots))
+        {
+            occupiedSlots = new HashSet<int>();
+            occupiedSlotsByType[itemType] = occupiedSlots;
+
+            for (int i = 0; i < inventoryData.items.Count; i++)
+            {
+                InventoryItem item = inventoryData.items[i];
+                if (item == null || item.location != InventoryItemLocation.Inventory)
+                {
+                    continue;
+                }
+
+                Item existingConfig = ItemJsonDatabase.GetItem(item.itemId);
+                if (existingConfig != null && existingConfig.itemType == itemType)
+                {
+                    occupiedSlots.Add(item.slotIndex);
+                }
+            }
+        }
+
+        int slotIndex = 0;
+        while (occupiedSlots.Contains(slotIndex))
+        {
+            slotIndex++;
+        }
+
+        occupiedSlots.Add(slotIndex);
+        return slotIndex;
+    }
+
+    private bool IsVisibleForCurrentAccount(GameFile gameFile)
+    {
+        if (gameFile == null)
+        {
+            return false;
+        }
+
+        string currentPlayerId = GetCurrentAccountPlayerId();
+        return string.IsNullOrWhiteSpace(currentPlayerId) ||
+            string.Equals(gameFile.ownerPlayerId, currentPlayerId, System.StringComparison.Ordinal);
+    }
+
+    private string GetCurrentAccountPlayerId()
+    {
+        return GameMgr.Account != null && GameMgr.Account.CurrentProfile != null
+            ? GameMgr.Account.CurrentProfile.playerId
+            : string.Empty;
+    }
 }
+

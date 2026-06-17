@@ -1,25 +1,25 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-[CreateAssetMenu(fileName = "RoleList",menuName = "Data/GameCharacter/RoleList")]
+[CreateAssetMenu(fileName = "RoleList",menuName = "Data/GameCharacter/Role/Role List")]
 public class RoleListData : ScriptableObject
 {
     public List<RoleData> roleList;
 
     /// <summary>
-    /// 根据 roleID 和 roleSex 获取角色相关的资源名称
+    /// 鏍规嵁 roleID 鍜?roleSex 鑾峰彇瑙掕壊鐩稿叧鐨勮祫婧愬悕绉?
     /// </summary>
-    /// <param name="roleID">角色ID</param>
-    /// <param name="roleSex">角色性别（true=男，false=女）</param>
-    /// <param name="roleIconName">图标名称</param>
-    /// <param name="createRolePanelBKName">创建角色面板背景名称</param>
-    /// <param name="roleBKName">角色背景名称</param>
-    /// <param name="roleModelName">模型名称</param>
+    /// <param name="roleID">瑙掕壊ID</param>
+    /// <param name="roleSex">瑙掕壊鎬у埆锛坱rue=鐢凤紝false=濂筹級</param>
+    /// <param name="roleIconName">鍥炬爣鍚嶇О</param>
+    /// <param name="createRolePanelBKName">鍒涘缓瑙掕壊闈㈡澘鑳屾櫙鍚嶇О</param>
+    /// <param name="roleBKName">瑙掕壊鑳屾櫙鍚嶇О</param>
+    /// <param name="roleModelName">妯″瀷鍚嶇О</param>
     public void GetRoleResourceNames(int roleID, bool roleSex, out string roleIconName, out string createRolePanelBKName, out string roleBKName, out string roleModelName)
     {
-        // 性别前缀
+        // 鎬у埆鍓嶇紑
         string sexPrefix = roleSex ? "Man" : "Women";
-        string sexPrefixForBK = roleSex ? "Man" : "Woman"; // createRolePanelBKName 使用 Woman 而不是 Women
+        string sexPrefixForBK = roleSex ? "Man" : "Woman"; // createRolePanelBKName 浣跨敤 Woman 鑰屼笉鏄?Women
 
         // roleIconName: Role_Women_Icon_03
         roleIconName = $"Role_{sexPrefix}_Icon_{roleID:D2}";
@@ -34,3 +34,4 @@ public class RoleListData : ScriptableObject
         roleModelName = $"RoleModel_{sexPrefix}_{roleID:D2}";
     }
 }
+

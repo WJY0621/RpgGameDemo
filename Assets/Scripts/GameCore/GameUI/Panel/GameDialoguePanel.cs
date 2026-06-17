@@ -8,6 +8,8 @@ using UnityEngine.UI;
 
 public class GameDialoguePanel : BasePanel
 {
+    private const string ChoiceClickSoundName = "UI_Hover3";
+
     public TMP_Text speakerName;
     public TMP_Text contentText;
     public Action OnMoveNext;
@@ -76,12 +78,9 @@ public class GameDialoguePanel : BasePanel
     public void UpdatePanel(DLSO node)
     {
         // 使用打字机效果显示文本
+        HideChoices();
         currentNode = node;
         StartTypewriterEffect(node.Text);
-        if(node.DialogueType != DialogueType.MultipleChoice)
-        {
-            HideChoices();
-        }
     }
 
     public void ShowChoices()
@@ -93,9 +92,11 @@ public class GameDialoguePanel : BasePanel
     public void HideChoices()
     {
         ChoiceContainer.SetActive(false);
-        for (int i = 0; i < ChoiceContainer.transform.childCount; i++)
+        for (int i = ChoiceContainer.transform.childCount - 1; i >= 0; i--)
         {
-            Destroy(ChoiceContainer.transform.GetChild(i).gameObject);
+            GameObject child = ChoiceContainer.transform.GetChild(i).gameObject;
+            child.SetActive(false);
+            Destroy(child);
         }
         choiceCount = 0;
         IsShooce = false;
@@ -103,20 +104,35 @@ public class GameDialoguePanel : BasePanel
 
     public void AddChoiceItem(DLSO node)
     {
+        if (node == null || node.Choices == null)
+        {
+            return;
+        }
+
         for (int i = 0; i < node.Choices.Count; i++)
         {
+            int choiceIndex = i;
             GameObject choiceItem = Instantiate(choiceItemPrefab);
             DialogueChoiceItem dialogueChoiceItem = choiceItem.GetComponent<DialogueChoiceItem>();
+            dialogueChoiceItem.id = choiceIndex;
             dialogueChoiceItem.button.onClick.AddListener(() =>
             {
-                OnChoiceSelected?.Invoke(dialogueChoiceItem.id);
+                PlayChoiceClickSound();
+                HideChoices();
+                OnChoiceSelected?.Invoke(choiceIndex);
             });
             dialogueChoiceItem.text.text = node.Choices[i].Text;
-            dialogueChoiceItem.id = choiceCount;
             choiceItem.transform.SetParent(ChoiceContainer.transform, false);
-            choiceCount++;
         }
+
+        choiceCount = node.Choices.Count;
     }
+
+    private void PlayChoiceClickSound()
+    {
+        GameMgr.Audio?.PlayUIEffect(ChoiceClickSoundName);
+    }
+
     public void SetSpeakerName(string speakerName)
     {
         this.speakerName.text = speakerName;

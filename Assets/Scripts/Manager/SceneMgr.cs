@@ -1,89 +1,166 @@
-using System.Collections;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 public class SceneMgr
 {
-    private Dictionary<string, SceneControllerBase> SceneControllerDic = new Dictionary<string, SceneControllerBase>();
+    private readonly Dictionary<string, SceneControllerBase> sceneControllerDic = new Dictionary<string, SceneControllerBase>();
+    private readonly LoadingMgr loadingMgr;
+
     public SceneControllerBase currentSceneController;
+    public bool IsSceneTransitioning { get; private set; }
+
+    public SceneMgr()
+    {
+        loadingMgr = new LoadingMgr(this);
+    }
 
     public void Register(string sceneName, SceneControllerBase sceneController)
     {
-        SceneControllerDic[sceneName] = sceneController;
-        GameMgr.Instance.sceneControllerInitiaFinished = true;
+        if (string.IsNullOrEmpty(sceneName) || sceneController == null)
+        {
+            return;
+        }
+
+        sceneControllerDic[sceneName] = sceneController;
         currentSceneController = sceneController;
+        GameMgr.Instance.sceneControllerInitiaFinished = true;
     }
 
     public void UnRegister(string sceneName)
     {
-        SceneControllerDic[sceneName] = null;
+        if (string.IsNullOrEmpty(sceneName))
+        {
+            return;
+        }
+
+        if (sceneControllerDic.ContainsKey(sceneName))
+        {
+            if (currentSceneController == sceneControllerDic[sceneName])
+            {
+                currentSceneController = null;
+            }
+
+            sceneControllerDic.Remove(sceneName);
+        }
     }
 
-    /// <summary>
-    /// 封装场景进入时调用方法
-    /// </summary>
-    /// <param name="sceneName"></param>
     public void OnSceneEnter(string sceneName)
     {
-        if (SceneControllerDic.ContainsKey(sceneName))
+        if (sceneControllerDic.TryGetValue(sceneName, out SceneControllerBase controller) && controller != null)
         {
-            if (SceneControllerDic[sceneName] != null)
-            {
-                SceneControllerDic[sceneName].OnSceneEnter();
-            }
-            else
-            {
-                Debug.LogError($"[SceneMgr] SceneController for {sceneName} is null!");
-            }
+            controller.OnSceneEnter();
+            return;
         }
-        else
-        {
-            string keys = string.Join(", ", SceneControllerDic.Keys);
-            Debug.LogError($"[SceneMgr] No SceneController registered for: {sceneName}. Available keys: [{keys}]");
-        }
+
+        string keys = string.Join(", ", sceneControllerDic.Keys);
+        Debug.LogError($"[SceneMgr] No SceneController registered for: {sceneName}. Available keys: [{keys}]");
     }
 
-    /// <summary>
-    /// 封装场景退出时调用方法
-    /// </summary>
-    /// <param name="sceneName"></param>
+    public async UniTask OnScenePreloadAsync(string sceneName)
+    {
+        if (sceneControllerDic.TryGetValue(sceneName, out SceneControllerBase controller) && controller != null)
+        {
+            await controller.OnScenePreloadAsync();
+            return;
+        }
+
+        string keys = string.Join(", ", sceneControllerDic.Keys);
+        Debug.LogError($"[SceneMgr] No SceneController registered for preload: {sceneName}. Available keys: [{keys}]");
+    }
+
+    public async UniTask OnSceneEnterAsync(string sceneName)
+    {
+        if (sceneControllerDic.TryGetValue(sceneName, out SceneControllerBase controller) && controller != null)
+        {
+            await controller.OnSceneEnterAsync();
+            return;
+        }
+
+        string keys = string.Join(", ", sceneControllerDic.Keys);
+        Debug.LogError($"[SceneMgr] No SceneController registered for enter: {sceneName}. Available keys: [{keys}]");
+    }
+
     public void OnSceneExit(string sceneName)
     {
-        if (SceneControllerDic.ContainsKey(sceneName))
+        if (sceneControllerDic.TryGetValue(sceneName, out SceneControllerBase controller) && controller != null)
         {
-            SceneControllerDic[sceneName]?.OnSceneExit();
+            controller.OnSceneExit();
         }
     }
 
-    /// <summary>
-    /// 统一的场景切换接口
-    /// </summary>
-    /// <param name="sceneName">目标场景名称</param>
-    /// <returns></returns>
-    public async Cysharp.Threading.Tasks.UniTask LoadSceneAsync(string sceneName)
+    public async UniTask OnSceneExitAsync(string sceneName)
     {
-        // 1. (可选) 打开 Loading 界面
-        // await GameMgr.UI.ShowPanel<LoadingPanel>();
+        if (sceneControllerDic.TryGetValue(sceneName, out SceneControllerBase controller) && controller != null)
+        {
+            await controller.OnSceneExitAsync();
+        }
+    }
 
-        // 2. 调用 AssetLoader 异步加载场景
-        // activateOnLoad 为 false，所以加载完不会立刻跳转
-        await GameMgr.AssetLoader.loadScene(sceneName, 
-            (progress) => 
-            {
-                // TODO: 更新 Loading 界面的进度条
-                // Debug.Log($"Loading {sceneName}: {progress * 100}%");
-            }, 
-            (sceneInstance) => 
-            {
-                // 加载完成的回调
-            }
-        );
+    public UniTask<LoadingResult> LoadSceneAsync(string sceneName)
+    {
+        return loadingMgr.LoadSceneAsync(sceneName);
+    }
 
-        // 3. 允许 GameMgr 在 Update 中激活场景
-        // GameMgr.Update 会检测此变量，调用 OnSceneExit 并激活新场景
-        GameMgr.Instance.readyToActiveLoadedScene = true;
+    public UniTask<LoadingResult> LoadSceneAsync(LoadingSceneRequest request)
+    {
+        return loadingMgr.LoadSceneAsync(request);
+    }
 
-        // 4. (可选) 等待场景切换事件完成后关闭 Loading 界面
-        // 这部分逻辑也可以监听 EventMgr 的 "SceneChanged" 事件来处理
+    public UniTask<LoadingResult> PrepareSceneAsync(LoadingSceneRequest request)
+    {
+        if (request != null)
+        {
+            request.ActivateOnLoaded = false;
+        }
+
+        return loadingMgr.PrepareSceneAsync(request);
+    }
+
+    public UniTask<LoadingResult> ActivatePreparedSceneAsync()
+    {
+        return loadingMgr.ActivatePreparedSceneAsync();
+    }
+
+    public UniTask<LoadingResult> CancelPreparedSceneAsync()
+    {
+        return loadingMgr.CancelPreparedSceneAsync();
+    }
+
+    public bool HasSceneController(string sceneName)
+    {
+        return !string.IsNullOrEmpty(sceneName) &&
+               sceneControllerDic.TryGetValue(sceneName, out SceneControllerBase controller) &&
+               controller != null;
+    }
+
+    public bool TryGetSceneController(string sceneName, out SceneControllerBase controller)
+    {
+        if (!string.IsNullOrEmpty(sceneName) &&
+            sceneControllerDic.TryGetValue(sceneName, out controller) &&
+            controller != null)
+        {
+            return true;
+        }
+
+        controller = null;
+        return false;
+    }
+
+    public bool TryBeginSceneTransition(string sceneName)
+    {
+        if (IsSceneTransitioning)
+        {
+            Debug.LogWarning($"[SceneMgr] Scene transition already in progress. Ignore request: {sceneName}");
+            return false;
+        }
+
+        IsSceneTransitioning = true;
+        return true;
+    }
+
+    public void CompleteSceneTransition()
+    {
+        IsSceneTransitioning = false;
     }
 }

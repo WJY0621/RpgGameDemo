@@ -1,0 +1,144 @@
+{
+    "items": [
+        {
+            "itemId": 2001,
+            "itemName": "恢复药水",
+            "itemType": "Consumable",
+            "quality": "Common",
+            "qualityValue": 1,
+            "description": "回复少量生命力",
+            "functionDescription": "恢复生命值+50",
+            "iconName": "Icon_potion_red_1",
+            "buyPrice": 5,
+            "sellPrice": 3,
+            "maxStack": 867,
+            "recoverHp": 50,
+            "recoverMp": 0,
+            "buffIDs": []
+        },
+        {
+            "itemId": 2002,
+            "itemName": "大恢复药水",
+            "itemType": "Consumable",
+            "quality": "Advanced",
+            "qualityValue": 2,
+            "description": "回复中量生命力",
+            "functionDescription": "恢复生命值+200，附加 Buff #1002",
+            "iconName": "Icon_potion_red_2",
+            "buyPrice": 20,
+            "sellPrice": 10,
+            "maxStack": 867,
+            "recoverHp": 200,
+            "recoverMp": 0,
+            "buffIDs": [
+                1002
+            ]
+        },
+        {
+            "itemId": 2003,
+            "itemName": "力量药水",
+            "itemType": "Consumable",
+            "quality": "Advanced",
+            "qualityValue": 2,
+            "description": "提高攻击力",
+            "functionDescription": "附加 Buff #1001",
+            "iconName": "Icon_potion_purple_1",
+            "buyPrice": 50,
+            "sellPrice": 25,
+            "maxStack": 867,
+            "recoverHp": 0,
+            "recoverMp": 0,
+            "buffIDs": [
+                1001
+            ]
+        },
+        {
+            "itemId": 2004,
+            "itemName": "强力量药水",
+            "itemType": "Consumable",
+            "quality": "Rare",
+            "qualityValue": 3,
+            "description": "获得强力攻击增幅",
+            "functionDescription": "附加 Buff #1001,1003",
+            "iconName": "Icon_potion_purple_2",
+            "buyPrice": 200,
+            "sellPrice": 100,
+            "maxStack": 867,
+            "recoverHp": 0,
+            "recoverMp": 0,
+            "buffIDs": [
+                1001,
+                1003
+            ]
+        },
+        {
+            "itemId": 2005,
+            "itemName": "敏捷药水",
+            "itemType": "Consumable",
+            "quality": "Advanced",
+            "qualityValue": 2,
+            "description": "提高速度",
+            "functionDescription": "附加 Buff #1006",
+            "iconName": "Icon_potion_green_1",
+            "buyPrice": 50,
+            "sellPrice": 25,
+            "maxStack": 867,
+            "recoverHp": 0,
+            "recoverMp": 0,
+            "buffIDs": [
+                1006
+            ]
+        },
+        {
+            "itemId": 2006,
+            "itemName": "强敏捷药水",
+            "itemType": "Consumable",
+            "quality": "Rare",
+            "qualityValue": 3,
+            "description": "提供速度增幅",
+            "functionDescription": "附加 Buff #1006,1007",
+            "iconName": "Icon_potion_green_2",
+            "buyPrice": 200,
+            "sellPrice": 100,
+            "maxStack": 867,
+            "recoverHp": 0,
+            "recoverMp": 0,
+            "buffIDs": [
+                1006,
+                1007
+            ]
+        },
+        {
+            "itemId": 2007,
+            "itemName": "蘑菇",
+            "itemType": "Consumable",
+            "quality": "Common",
+            "qualityValue": 1,
+            "description": "恢复微量生命",
+            "functionDescription": "恢复生命值+20",
+            "iconName": "icon_food_mushroom",
+            "buyPrice": 2,
+            "sellPrice": 1,
+            "maxStack": 867,
+            "recoverHp": 20,
+            "recoverMp": 0,
+            "buffIDs": []
+        },
+        {
+            "itemId": 2008,
+            "itemName": "伯爵召唤物",
+            "itemType": "Consumable",
+            "quality": "Epic",
+            "qualityValue": 4,
+            "description": "散发邪恶气息的石头，能吸引某个邪恶且强大的存在",
+            "functionDescription": "",
+            "iconName": "icon_boss_sum",
+            "buyPrice": 0,
+            "sellPrice": 1000,
+            "maxStack": 867,
+            "recoverHp": 0,
+            "recoverMp": 0,
+            "buffIDs": []
+        }
+    ]
+}

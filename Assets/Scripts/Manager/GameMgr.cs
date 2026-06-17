@@ -1,33 +1,37 @@
-using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.SymbolStore;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.ResourceManagement.ResourceProviders;
-using UnityEngine.SceneManagement;
-using UnityEngine.UIElements;
 
 public class GameMgr : MonoSingleton<GameMgr>
 {
+    private const string SceneChangedEventName = "SceneChanged";
+    private const string StartSceneName = "GameStartScene";
+    private const string GameSoundDataKey = "GameSoundDataSO";
+    private const string PlayerInitialDataKey = "PlayerInitialData";
+
+    [Header("Runtime")]
     public PlayerStateDriver Player;
+    public PlayerData playerData;
+    public PlayerInitialDataSO playerInitialData;
 
-
-    #region Manager实例
-    #region 音效部分
-    //音效数据
-    private GameSoundDataSO gameSoundDataSO;
-    public Dictionary<string, GameSoundGroupDataSO> gameSoundDataDic = new Dictionary<string, GameSoundGroupDataSO>();
-
-    //游戏音效播放器
-    public static AudioMgr Audio => mAudioMgr;
-    private static AudioMgr mAudioMgr;
-    [Header("Audio:需要配置")]
+    [Header("Audio")]
     public AudioSource BGMAudioSource;
     public AudioSource UIAudioSource;
     public AudioSource GameEffectSource;
-    #endregion
 
-    #region 资源加载
+    [Header("Startup State")]
+    public bool firstEnterGame;
+    public bool completeGameInitialze;
+    public bool sceneControllerInitiaFinished;
+
+    private GameSoundDataSO gameSoundDataSO;
+    public Dictionary<string, GameSoundGroupDataSO> gameSoundDataDic =
+        new Dictionary<string, GameSoundGroupDataSO>();
+#region 注册服务
+    //音效
+    private static AudioMgr mAudioMgr;
+    public static AudioMgr Audio => mAudioMgr;
+    //加载
     private static AssetLoader mAssetLoader;
     public static AssetLoader AssetLoader
     {
@@ -37,218 +41,438 @@ public class GameMgr : MonoSingleton<GameMgr>
             {
                 mAssetLoader = new AssetLoader();
             }
+
             return mAssetLoader;
         }
     }
-    #endregion
-
-    #region 相机管理器
-    public static CameraMgr cameraMgr => mCameraMgr;
+    //相机
     private static CameraMgr mCameraMgr;
-    #endregion
-
-    #region 输入管理器
-    //输入管理
-    public static InputMgr input => mInputMgr;
+    public static CameraMgr cameraMgr => mCameraMgr;
+    //输入
     private static InputMgr mInputMgr;
-    #endregion
-
-    #region 时间缩放管理器
-    public static TimeScaleMgr timeScaleMgr => mTimeScaleMgr;
+    public static InputMgr input => mInputMgr;
+    //时间
     private static TimeScaleMgr mTimeScaleMgr = new TimeScaleMgr();
-    #endregion
-
-    #region 事件管理器
-    public static EventMgr Event => mEventMgr;
+    public static TimeScaleMgr timeScaleMgr => mTimeScaleMgr;
+    //事件
     private static EventMgr mEventMgr = new EventMgr();
-    #endregion
-
-    #region UI管理器
-    public static UIMgr UI => mUIMgr;
+    public static EventMgr Event => mEventMgr;
+    //UI
     public static UIMgr mUIMgr;
-    #endregion
+    public static UIMgr UI => mUIMgr;
 
-    #region 鼠标管理器
-    public static CursorMgr Cursor => mCursorMgr;
     private static CursorMgr mCursorMgr;
-    #endregion
+    public static CursorMgr Cursor => mCursorMgr;
 
-    #region 存档管理
-    public bool firstEnterGame;
-
-    public static FileMgr File => mFileMgr;
     private static FileMgr mFileMgr;
-    #endregion
+    public static FileMgr File => mFileMgr;
 
-    #region 游戏场景管理
-    //场景相关数据
-    //游戏是否初始化完成
-    public bool completeGameInitialze;
-    //场景是否初始化完成
-    public bool sceneControllerInitiaFinished;
-    //是否准备激活场景
-    public bool readyToActiveLoadedScene;
-    //当前所在的场景名字
-    private string previousSceneName;
-    //正在加载的场景
-    public SceneInstance LoadedScene
-    {
-        get
-        {
-            return loadedScene;
-        }
-        set
-        {
-            previousSceneName = loadedScene.Scene.name;
-            if (string.IsNullOrEmpty(previousSceneName))
-            {
-                previousSceneName = SceneManager.GetActiveScene().name;
-            }
-            loadedScene = value;
-        }
-    }
-    private SceneInstance loadedScene;
-    //场景管理器
-    public static SceneMgr Scene => mSceneMgr;
+    //场景
     private static SceneMgr mSceneMgr;
-    #endregion
-
-    #region 对话管理
-    public static DialogueMgr Dialogue => mDialogue;
+    public static SceneMgr Scene => mSceneMgr;
+    //对话
     private static DialogueMgr mDialogue;
-    #endregion
+    public static DialogueMgr Dialogue => mDialogue;
 
-    #region 背包管理
-    public static PackageMgr Package => mPackage;
+    private static NPCMgr mNPC;
+    public static NPCMgr NPC => mNPC;
+
     private static PackageMgr mPackage;
-    #endregion
+    public static PackageMgr Package => mPackage;
 
-    #region 时间管理
+    private static ShopMgr mShop;
+    public static ShopMgr Shop => mShop;
+
+    private static EquipmentMgr mEquipmentMgr;
+    public static EquipmentMgr Equipment => mEquipmentMgr;
+
+    private static TaskManager mTaskMgr;
+    public static TaskManager TaskMgr => mTaskMgr;
+
+    private static MessageMgr mMessageMgr;
+    public static MessageMgr Message => mMessageMgr;
+
+    private static IconAtlasMgr mIconAtlasMgr;
+    public static IconAtlasMgr IconAtlas => mIconAtlasMgr;
+
+    private static CraftMgr mCraftMgr;
+    public static CraftMgr Craft => mCraftMgr;
+
+    private static BuildManager mBuildMgr;
+    public static BuildManager Build => mBuildMgr;
+
     public static TimeMgr Time => TimeMgr.Instance;
-    #endregion
 
-    #endregion
+    private static VFXMgr mVFXMgr;
+    public static VFXMgr VFX => mVFXMgr;
 
-    #region 数据
-    public PlayerData playerData;
-    public PlayerInitialDataSO playerInitialData;
-    #endregion
+    private static BuffMgr mBuffMgr;
+    public static BuffMgr Buff => mBuffMgr;
 
-    //public GameObject playerObj;
+    private static NetworkMgr mNetworkMgr;
+    public static NetworkMgr Network => mNetworkMgr;
+
+    private static AccountMgr mAccountMgr;
+    public static AccountMgr Account => mAccountMgr;
+
+    private static SocialMgr mSocialMgr;
+    public static SocialMgr Social => mSocialMgr;
+
+    private static ChatMgr mChatMgr;
+    public static ChatMgr Chat => mChatMgr;
+
+    private static RealtimeMgr mRealtimeMgr;
+    public static RealtimeMgr Realtime => mRealtimeMgr;
+
+    private static RedDotMgr mRedDotMgr;
+    public static RedDotMgr RedDot => mRedDotMgr;
+
+    private static LuaManager mLuaMgr;
+    public static LuaManager Lua => mLuaMgr;
+#endregion
+
+    private NightMonsterSpawner nightMonsterSpawner;
+
     protected override void Awake()
     {
         base.Awake();
-        if (Instance != this) return; // 关键修复：如果是重复的单例，直接返回，避免覆盖静态变量和重复注册事件
+        if (Instance != this)
+        {
+            return;
+        }
 
-        //初始化音效管理器
+        InitializeCoreServices();
+        InitializeGameplayServices();
+        InitializeOnlineServices();
+
+        // Lua 虚拟机：先初始化；入口脚本 main 在配置热更下载完最新 .lua 之后于 Start 里 require，
+        // 保证当次启动就跑热更后的逻辑。
+        InitializeRuntimeComponents();
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (gameObject.GetComponent<NetworkDebugHud>() == null)
+        {
+            gameObject.AddComponent<NetworkDebugHud>();
+        }
+
+        if (gameObject.GetComponent<SocialDebugHud>() == null)
+        {
+            gameObject.AddComponent<SocialDebugHud>();
+        }
+#endif
+
+        RegisterGlobalEvents();
+    }
+#region 初始化服务
+
+    private void InitializeCoreServices()
+    {
         mAudioMgr = new AudioMgr(BGMAudioSource, UIAudioSource, GameEffectSource);
-        //初始化资源加载器
         mAssetLoader = new AssetLoader();
-        //初始化相机管理器
         mCameraMgr = new CameraMgr();
-        //初始化输入管理器
         mInputMgr = new InputMgr();
-        //初始化时间缩放管理器
         mTimeScaleMgr = new TimeScaleMgr();
-        //初始化事件管理器
         mEventMgr = new EventMgr();
-        //初始化UI管理器
         mUIMgr = new UIMgr();
-        //初始化鼠标管理器
         mCursorMgr = new CursorMgr();
         mCursorMgr.Init();
-        //初始化存档管理
-        mFileMgr = new FileMgr();
-        // 尝试加载存档（如果有）
-        mFileMgr.LoadGameFile();
-        //初始化场景管理
-        mSceneMgr = new SceneMgr();
-        //对话管理器
-        mDialogue = new DialogueMgr();
-        //背包管理器
-        mPackage = new PackageMgr();
-
-        //注册事件
-        Event.Register("SceneChanged", new GameEventOneParam<string>(new GameActionOneParam<string>(OnSceneChanged)));
     }
 
+    private void InitializeGameplayServices()
+    {
+        mTaskMgr = new TaskManager();
+        mPackage = new PackageMgr();
+        mShop = new ShopMgr();
+        mEquipmentMgr = new EquipmentMgr();
+        mEquipmentMgr.Init(mPackage);
+
+        mFileMgr = new FileMgr();
+        mFileMgr.LoadGameFile();
+
+        mSceneMgr = new SceneMgr();
+        mDialogue = new DialogueMgr();
+        mNPC = new NPCMgr();
+        mDialogue.Init(mTaskMgr);
+
+        mMessageMgr = new MessageMgr();
+        mIconAtlasMgr = new IconAtlasMgr();
+        mCraftMgr = new CraftMgr();
+        mCraftMgr.Init();
+        mBuildMgr = new BuildManager();
+        mVFXMgr = new VFXMgr();
+        mBuffMgr = new BuffMgr();
+        mBuffMgr.Init();
+        mNetworkMgr = new NetworkMgr();
+        mNetworkMgr.Init();
+    }
+
+    private void InitializeOnlineServices()
+    {
+        mAccountMgr = new AccountMgr(new HttpAccountService());
+        mAccountMgr.OnProfileChanged += HandleAccountProfileChanged;
+        mAccountMgr.Init();
+
+        mRedDotMgr = new RedDotMgr();
+
+        mSocialMgr = new SocialMgr(new HttpSocialService());
+        mSocialMgr.Init();
+
+        mChatMgr = new ChatMgr(new HttpChatService());
+        mChatMgr.Init();
+
+        mRealtimeMgr = new RealtimeMgr();
+        mRealtimeMgr.OnChatMessageReceived += HandleRealtimeChatMessage;
+        mRealtimeMgr.OnOnlineInviteReceived += HandleRealtimeOnlineInvite;
+        mRealtimeMgr.OnOnlineInviteResultReceived += HandleRealtimeOnlineInviteResult;
+        mRealtimeMgr.OnSocialRefreshReceived += HandleRealtimeSocialRefresh;
+        mRealtimeMgr.OnSessionKickedReceived += HandleSessionKicked;
+        mRealtimeMgr.Init();
+    }
+
+    private void InitializeRuntimeComponents()
+    {
+        mLuaMgr = new LuaManager();
+        mLuaMgr.Init();
+        if (gameObject.GetComponent<LuaRuntime>() == null)
+        {
+            gameObject.AddComponent<LuaRuntime>();
+        }
+
+        nightMonsterSpawner = gameObject.GetComponent<NightMonsterSpawner>();
+        if (nightMonsterSpawner == null)
+        {
+            nightMonsterSpawner = gameObject.AddComponent<NightMonsterSpawner>();
+        }
+    }
+#endregion
+    
+#region Others
+    private void RegisterGlobalEvents()
+    {
+        Event.Register(SceneChangedEventName,
+            new GameEventOneParam<string>(new GameActionOneParam<string>(OnSceneChanged)));
+    }
+
+    private void HandleAccountProfileChanged(AccountProfile profile)
+    {
+        mFileMgr?.EnsureCurrentGameFileForCurrentAccount();
+        mSocialMgr?.SyncCurrentAccountProfileName();
+        mChatMgr?.RefreshUnreadCount(false);
+        mRealtimeMgr?.Reconnect();
+    }
+
+    private void HandleRealtimeChatMessage(ChatMessageData message)
+    {
+        mChatMgr?.HandleRealtimeMessage(message);
+    }
+
+    private void HandleRealtimeOnlineInvite(InviteData invite)
+    {
+        mSocialMgr?.ReceiveOnlineRequest(invite);
+    }
+
+    private void HandleRealtimeOnlineInviteResult(InviteResultData result)
+    {
+        mSocialMgr?.ReceiveOnlineInviteResult(result);
+    }
+
+    private void HandleRealtimeSocialRefresh()
+    {
+        mSocialMgr?.HandleRealtimeSocialRefresh();
+    }
+
+#endregion
+
+#region 异步加载
+    /// <summary>
+    /// 配置热更新检查：下载有更新的 JSON 并重载各数据库。任何失败都吞掉，保证启动不被网络问题阻塞。
+    /// </summary>
+    private async Cysharp.Threading.Tasks.UniTask TryRunConfigHotUpdateAsync()
+    {
+        try
+        {
+            int updated = await ConfigHotUpdater.CheckAndApplyAsync();
+            if (updated > 0)
+            {
+                // 背包维护着一份独立的物品配置快照(PackageMgr.itemDict)，只重载
+                // ItemJsonDatabase 不会刷新它，会导致热更新增/改动的物品在 AddItem、
+                // 合成、装备时按 id 找不到 config。这里通过背包统一重载(内部会先 Reload
+                // ItemJsonDatabase 再重建快照)。
+                if (mPackage != null)
+                {
+                    mPackage.ReloadItemConfigs();
+                }
+                else
+                {
+                    ItemJsonDatabase.Reload();
+                }
+                RecipeJsonDatabase.Reload();
+                MonsterJsonDatabase.Reload();
+                Debug.Log($"[GameMgr] 配置热更：已更新 {updated} 个文件并重载数据库（含背包配置快照）。");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[GameMgr] 配置热更检查失败（忽略，使用包内配置）：{ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 资源热更新检查：更新 Addressables 远程目录。任何失败都吞掉，保证启动不被网络问题阻塞。
+    /// </summary>
+    private async Cysharp.Threading.Tasks.UniTask TryRunResourceHotUpdateAsync()
+    {
+        try
+        {
+            int updated = await ResourceHotUpdater.CheckAndUpdateCatalogsAsync();
+            if (updated > 0)
+            {
+                Debug.Log($"[GameMgr] 资源热更：已更新 {updated} 个 Addressables 目录。");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[GameMgr] 资源热更检查失败（忽略，使用包内资源）：{ex.Message}");
+        }
+    }
+#endregion
     private async void Start()
     {
-        //加载音效数据
-        gameSoundDataSO = await AssetLoader.LoadAsset<GameSoundDataSO>("GameSoundDataSO", (a) =>
+        UI.ShowBlackScreenImmediate();
+
+        await InitializeAudioAsync();
+        await mVFXMgr.Init();
+
+        // 配置热更新：best-effort 从服务器拉取最新配置（服务器不可用时静默跳过，不阻塞启动）。
+        await TryRunConfigHotUpdateAsync();
+
+        // 资源热更新：检查并更新 Addressables 远程目录（新图标/模型随后按需从服务器下载）。
+        await TryRunResourceHotUpdateAsync();
+
+        // Lua 入口：在配置热更下载完最新 .lua 之后再加载，确保跑的是热更后的逻辑。
+        mLuaMgr?.Require("main");
+
+        await InitializePlayerDataAsync();
+        await PrepareStartSceneAsync();
+    }
+
+    private async UniTask InitializeAudioAsync()
+    {
+        gameSoundDataSO = await AssetLoader.LoadAsset<GameSoundDataSO>(GameSoundDataKey, _ =>
         {
-            Debug.Log("GameSoundDataSO 加载完成");
+            Debug.Log("GameSoundDataSO loaded");
         });
-        foreach (var group in gameSoundDataSO.gameSoundGroups)
+
+        foreach (GameSoundGroupDataSO group in gameSoundDataSO.gameSoundGroups)
         {
-            group.Init();
-            gameSoundDataDic.Add(group.GroupName, group);
-        }
-        //input.EnablePlayerActionMap();
-        //加载玩家初始数据
-        playerInitialData = await AssetLoader.LoadAsset<PlayerInitialDataSO>("PlayerInitialData");
-        //加载游戏开始场景
-        LogoPanel logoPanel = await UI.ShowPanel<LogoPanel>();
-        await GameMgr.AssetLoader.loadScene("GameStartScene", null,
-            scene =>
+            if (group == null || string.IsNullOrWhiteSpace(group.GroupName))
             {
-                completeGameInitialze = true;
-                logoPanel.ShowLogo();
+                continue;
             }
-        );
-        //playerObj.SetActive(true);
+
+            group.Init();
+            gameSoundDataDic[group.GroupName] = group;
+        }
+
+        mAudioMgr?.Init(gameSoundDataSO);
+    }
+
+    private async UniTask InitializePlayerDataAsync()
+    {
+        playerInitialData = await AssetLoader.LoadAsset<PlayerInitialDataSO>(PlayerInitialDataKey);
+        if (playerData == null && playerInitialData != null)
+        {
+            playerData = playerInitialData.GetPlayerInitialData();
+        }
+
+        if (playerData != null && playerInitialData != null)
+        {
+            playerData.EnsureInitialized(playerInitialData);
+            playerData.ClearRuntimeBonuses();
+        }
+
+        mEquipmentMgr?.ApplyEquipmentStatsToPlayerData(playerData);
+    }
+
+    private async UniTask PrepareStartSceneAsync()
+    {
+        LogoPanel logoPanel = await UI.ShowPanel<LogoPanel>();
+        LoadingSceneRequest startSceneRequest = new LoadingSceneRequest(StartSceneName)
+        {
+            ActivateOnLoaded = false,
+            ShowLoadingPanel = false
+        };
+
+        LoadingResult prepareResult = await Scene.PrepareSceneAsync(startSceneRequest);
+        if (!prepareResult.Success)
+        {
+            Debug.LogError($"[GameMgr] Failed to prepare start scene: {prepareResult.ErrorMessage}");
+            return;
+        }
+
+        if (logoPanel == null)
+        {
+            Debug.LogError("[GameMgr] Failed to show LogoPanel.");
+            UI.HideBlackScreenImmediate();
+            return;
+        }
+
+        completeGameInitialze = true;
+        logoPanel.ShowLogo();
+        await logoPanel.WaitUntilFullyShownAsync();
+        UI.HideBlackScreenImmediate();
     }
 
     private void Update()
     {
-        if (readyToActiveLoadedScene)
-        {
-            readyToActiveLoadedScene = false; // 立即重置，防止多次调用
-            sceneControllerInitiaFinished = false; // 关键修复：在激活新场景前重置初始化完成标记，防止旧场景的标记残留导致误判
-            
-            // 调用场景管理器的退出方法
-            if (!string.IsNullOrEmpty(previousSceneName))
-            {
-                Scene.OnSceneExit(previousSceneName);
-            }
-            else
-            {
-                // 如果 previousSceneName 为空，尝试获取当前场景
-                Scene.OnSceneExit(SceneManager.GetActiveScene().name);
-            }
-
-            AsyncOperation handle = LoadedScene.ActivateAsync();
-            handle.completed += (ao) =>
-            {
-                if (ao.isDone)
-                {
-                    // 场景激活完成后，更新 previousSceneName 为新场景，以便下次使用
-                    // 但这里要注意，Event.Broadcast 之后，OnSceneChanged 会被调用，然后进入新场景的 OnSceneEnter
-                    Event.Broadcast("SceneChanged", new GameEventParameter<string>(LoadedScene.Scene.name));
-                }
-            };
-        }
-        //Audio.ProcessBGM();
+        mAudioMgr?.Tick(UnityEngine.Time.unscaledDeltaTime);
+        mMessageMgr?.Tick(UnityEngine.Time.unscaledDeltaTime);
+        mBuildMgr?.Tick();
     }
 
     private async void OnSceneChanged(string newScene)
     {
-        // 增加超时保护，防止无限等待
-        float timeout = 30f; // 增加到 30 秒超时
+        await WaitForSceneControllerReady(newScene);
+        mAudioMgr?.PlaySceneBGM(newScene);
+    }
+
+    private void HandleSessionKicked(string reason)
+    {
+        HandleSessionKickedAsync(reason).Forget();
+    }
+
+    private async UniTaskVoid HandleSessionKickedAsync(string reason)
+    {
+        Debug.LogWarning("[GameMgr] Account session kicked: " + reason);
+
+        if (mNetworkMgr != null && mNetworkMgr.IsSessionActive)
+        {
+            await mNetworkMgr.DisconnectToSinglePlayerAsync();
+        }
+
+        mAccountMgr?.ClearLocalAccount();
+
+        if (mUIMgr != null)
+        {
+            await mUIMgr.ShowPanel<LoginPanel>();
+        }
+    }
+
+    private async UniTask WaitForSceneControllerReady(string newScene)
+    {
+        float timeout = 10f;
         float timer = 0f;
-        while (!sceneControllerInitiaFinished)
+
+        while (Scene != null && !Scene.HasSceneController(newScene))
         {
             await UniTask.Yield();
-            timer += UnityEngine.Time.deltaTime;
+            timer += UnityEngine.Time.unscaledDeltaTime;
+
             if (timer > timeout)
             {
                 Debug.LogError($"[GameMgr] Wait for sceneControllerInitiaFinished TIMEOUT! Scene: {newScene}. Elapsed: {timer}s");
                 return;
             }
         }
-        
-        Scene.OnSceneEnter(newScene);
-        
-        sceneControllerInitiaFinished = false;
     }
 }

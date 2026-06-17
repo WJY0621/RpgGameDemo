@@ -12,4 +12,9 @@ public class DLNodeSaveData
     [field: SerializeField] public string GroupID{ get; set; }
     [field: SerializeField] public DialogueType DialogueType{ get; set; }
     [field: SerializeField] public Vector2 Position{ get; set; }
+    [field: SerializeField] public DialogueEventType EventType { get; set; }
+    [field: SerializeField] public TaskDataSO TaskDataSO { get; set; }
+    [field: SerializeField] public int TaskID { get; set; }
+    [field: SerializeField] public int TaskStepID { get; set; }
+    [field: SerializeField] public string CustomEventName { get; set; }
 }

@@ -1,0 +1,528 @@
+{
+    "recipes": [
+        {
+            "recipeId": 1,
+            "recipeName": "木剑",
+            "targetItemId": 1001,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3001,
+                    "count": 3
+                }
+            ]
+        },
+        {
+            "recipeId": 2,
+            "recipeName": "铁剑",
+            "targetItemId": 1002,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3001,
+                    "count": 1
+                },
+                {
+                    "itemId": 3002,
+                    "count": 1
+                },
+                {
+                    "itemId": 3003,
+                    "count": 2
+                }
+            ]
+        },
+        {
+            "recipeId": 3,
+            "recipeName": "铁甲",
+            "targetItemId": 1011,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3003,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 4,
+            "recipeName": "铁帽",
+            "targetItemId": 1012,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3003,
+                    "count": 2
+                }
+            ]
+        },
+        {
+            "recipeId": 5,
+            "recipeName": "铁裤",
+            "targetItemId": 1013,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3003,
+                    "count": 3
+                }
+            ]
+        },
+        {
+            "recipeId": 6,
+            "recipeName": "银甲",
+            "targetItemId": 1014,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3004,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 7,
+            "recipeName": "银帽",
+            "targetItemId": 1015,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3004,
+                    "count": 2
+                }
+            ]
+        },
+        {
+            "recipeId": 8,
+            "recipeName": "银裤",
+            "targetItemId": 1016,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3004,
+                    "count": 3
+                }
+            ]
+        },
+        {
+            "recipeId": 9,
+            "recipeName": "铁刀",
+            "targetItemId": 1006,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3002,
+                    "count": 3
+                },
+                {
+                    "itemId": 3003,
+                    "count": 3
+                }
+            ]
+        },
+        {
+            "recipeId": 10,
+            "recipeName": "无尽之刃",
+            "targetItemId": 1003,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 1002,
+                    "count": 1
+                },
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 11,
+            "recipeName": "冰晶刃",
+            "targetItemId": 1004,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3004,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 12,
+            "recipeName": "血魔刀",
+            "targetItemId": 1005,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 1006,
+                    "count": 1
+                },
+                {
+                    "itemId": 3009,
+                    "count": 3
+                },
+                {
+                    "itemId": 3010,
+                    "count": 3
+                }
+            ]
+        },
+        {
+            "recipeId": 13,
+            "recipeName": "真血魔刃",
+            "targetItemId": 1007,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 1005,
+                    "count": 1
+                },
+                {
+                    "itemId": 3006,
+                    "count": 1
+                },
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 14,
+            "recipeName": "伯爵召唤物",
+            "targetItemId": 2008,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3002,
+                    "count": 1
+                },
+                {
+                    "itemId": 3003,
+                    "count": 1
+                },
+                {
+                    "itemId": 3004,
+                    "count": 1
+                },
+                {
+                    "itemId": 3005,
+                    "count": 1
+                }
+            ]
+        },
+        {
+            "recipeId": 15,
+            "recipeName": "烈焰之刃",
+            "targetItemId": 1018,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 16,
+            "recipeName": "冰霜之刃",
+            "targetItemId": 1019,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 17,
+            "recipeName": "符文之刃",
+            "targetItemId": 1020,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 18,
+            "recipeName": "未来之刃",
+            "targetItemId": 1021,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 19,
+            "recipeName": "瘟疫之刃",
+            "targetItemId": 1022,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 20,
+            "recipeName": "幻梦之刃",
+            "targetItemId": 1023,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 21,
+            "recipeName": "海洋之刃",
+            "targetItemId": 1024,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 22,
+            "recipeName": "幽魂之刃",
+            "targetItemId": 1025,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 23,
+            "recipeName": "空间之刃",
+            "targetItemId": 1026,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 24,
+            "recipeName": "熔岩之刃",
+            "targetItemId": 1027,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 25,
+            "recipeName": "金表",
+            "targetItemId": 1017,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3004,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 26,
+            "recipeName": "阿尔卑斯靴",
+            "targetItemId": 1032,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3004,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 27,
+            "recipeName": "很猛手套",
+            "targetItemId": 1033,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3004,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 28,
+            "recipeName": "十字盾",
+            "targetItemId": 1034,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3004,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 29,
+            "recipeName": "天使翼",
+            "targetItemId": 1035,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3004,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 30,
+            "recipeName": "恢复药水",
+            "targetItemId": 2001,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3001,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 31,
+            "recipeName": "大恢复药水",
+            "targetItemId": 2002,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3001,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 32,
+            "recipeName": "力量药水",
+            "targetItemId": 2003,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3001,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 33,
+            "recipeName": "强力量药水",
+            "targetItemId": 2004,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3001,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 34,
+            "recipeName": "敏捷药水",
+            "targetItemId": 2005,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3001,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 35,
+            "recipeName": "强敏捷药水",
+            "targetItemId": 2006,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3001,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 36,
+            "recipeName": "银镐",
+            "targetItemId": 1029,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3004,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 37,
+            "recipeName": "金镐",
+            "targetItemId": 1030,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 38,
+            "recipeName": "金头盔",
+            "targetItemId": 1036,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 5
+                }
+            ]
+        },
+        {
+            "recipeId": 39,
+            "recipeName": "金甲",
+            "targetItemId": 1037,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 8
+                }
+            ]
+        },
+        {
+            "recipeId": 40,
+            "recipeName": "金头盔",
+            "targetItemId": 1038,
+            "targetCount": 1,
+            "materials": [
+                {
+                    "itemId": 3005,
+                    "count": 6
+                }
+            ]
+        }
+    ]
+}

@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -7,24 +5,33 @@ using UnityEngine.UI;
 
 public class PackageItemUI : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
+    private const string HoverSoundName = "UI_Click2";
+
     private Image BK;
     private Transform UIIcon;
     private Transform UISelect;
     private Transform UIDeleteSelect;
     private Transform UINumbel;
     private Transform UINew;
+    private Transform UIArtifactImage;
 
     private Item packageItem;
     public Item PackageItem => packageItem;
-    private InventoryItem inventoryItem;
-    private PackagePanel uiParent;
-    private int itemIndex; // 在列表中的索引
-    public int ItemIndex => itemIndex;
-    private Coroutine hoverCoroutine;
 
-    void Awake()
+    private InventoryItem inventoryItem;
+    public InventoryItem InventoryItem => inventoryItem;
+
+    private PackagePanel uiParent;
+    private int itemIndex;
+    public int ItemIndex => itemIndex;
+
+    private bool isSelected;
+    private bool isDeleteSelected;
+    public bool IsDeleteSelected => isDeleteSelected;
+
+    private void Awake()
     {
-        BK = this.GetComponent<Image>();
+        BK = GetComponent<Image>();
         InitUIName();
     }
 
@@ -35,38 +42,36 @@ public class PackageItemUI : MonoBehaviour, IPointerClickHandler, IPointerEnterH
         UIDeleteSelect = transform.Find("DeleteSelect");
         UINumbel = transform.Find("Numbel");
         UINew = transform.Find("New");
+        UIArtifactImage = transform.Find("ArtifactImage");
 
         if (UISelect != null) UISelect.gameObject.SetActive(false);
         if (UIDeleteSelect != null) UIDeleteSelect.gameObject.SetActive(false);
         if (UINew != null) UINew.gameObject.SetActive(false);
+        if (UIArtifactImage != null) UIArtifactImage.gameObject.SetActive(false);
     }
-
-    private bool isSelected = false;
-    private bool isDeleteSelected = false; // 是否被批量删除选中
-    public bool IsDeleteSelected => isDeleteSelected;
 
     public void Refresh(InventoryItem invItem, PackagePanel panel, int index)
     {
-        this.inventoryItem = invItem;
-        this.uiParent = panel;
-        this.itemIndex = index;
-        this.isSelected = false; 
-        this.isDeleteSelected = false; // 重置批量删除选中状态
-        
-        // 在开始加载新数据前，先清空/隐藏当前 UI 表现
+        inventoryItem = invItem;
+        uiParent = panel;
+        itemIndex = index;
+        isSelected = false;
+        isDeleteSelected = false;
+
         ResetUI();
 
-        // 如果传入的 invItem 为空，说明这是一个“空白格”
         if (invItem == null)
         {
-            this.packageItem = null;
-            // 空白格背景设为更亮的深蓝色半透明
-            if (BK != null) BK.color = new Color(0.15f, 0.22f, 0.35f, 0.4f);
+            packageItem = null;
+            if (BK != null)
+            {
+                BK.color = new Color(0.15f, 0.22f, 0.35f, 0.4f);
+            }
+
             return;
         }
 
-        this.packageItem = GameMgr.Package.GetItemConfig(invItem.itemId);
-
+        packageItem = GameMgr.Package.GetItemConfig(invItem.itemId);
         if (packageItem == null)
         {
             return;
@@ -75,34 +80,76 @@ public class PackageItemUI : MonoBehaviour, IPointerClickHandler, IPointerEnterH
         UpdateItem();
     }
 
-    public void SetIconVisible(bool visible)
+    /// <summary>
+    /// 拖拽开始/结束时调用：隐藏或恢复整个槽位的视觉（图标 + 背景色）。
+    /// 结束后 PackagePanel 会调用 RefreshUi 做完整刷新，此处仅做即时视觉反馈。
+    /// </summary>
+    public void SetDraggingState(bool isDragging)
     {
+        if (BK != null)
+        {
+            BK.color = GetCurrentBKColor();
+        }
+
         if (UIIcon != null && packageItem != null)
         {
-            UIIcon.gameObject.SetActive(visible);
+            UIIcon.gameObject.SetActive(!isDragging);
         }
+
+        if (UINumbel != null)
+        {
+            bool showCount = !isDragging && packageItem != null && inventoryItem != null && packageItem.itemType != ItemType.Weapon && inventoryItem.count > 1;
+            UINumbel.gameObject.SetActive(showCount);
+        }
+
+        if (UINew != null)
+        {
+            bool showNew = !isDragging && inventoryItem != null && inventoryItem.isNew;
+            UINew.gameObject.SetActive(showNew);
+        }
+
+        if (UIArtifactImage != null)
+        {
+            UIArtifactImage.gameObject.SetActive(!isDragging && IsArtifactWeapon());
+        }
+    }
+
+    private Color GetCurrentBKColor()
+    {
+        if (inventoryItem == null || packageItem == null)
+        {
+            return new Color(0.15f, 0.22f, 0.35f, 0.4f);
+        }
+
+        if (isDeleteSelected)
+        {
+            return new Color(0.5f, 0.1f, 0.1f, 1f);
+        }
+
+        return packageItem.quality switch
+        {
+            ItemQuality.Common => new Color(0.24f, 0.28f, 0.35f, 1f),
+            ItemQuality.Advanced => new Color(0.12f, 0.45f, 0.12f, 1f),
+            ItemQuality.Rare => new Color(0.12f, 0.35f, 0.65f, 1f),
+            ItemQuality.Epic => new Color(0.45f, 0.12f, 0.65f, 1f),
+            ItemQuality.Legendary => new Color(0.75f, 0.45f, 0.12f, 1f),
+            _ => new Color(0.24f, 0.28f, 0.35f, 1f)
+        };
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (uiParent != null) uiParent.OnBeginDragItem(this);
+        uiParent?.OnBeginDragItem(this);
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (uiParent != null) uiParent.OnDragItem(eventData);
+        uiParent?.OnDragItem(eventData);
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        // 射线检测当前落点下的格子
-        PackageItemUI target = null;
-        if (eventData.pointerEnter != null)
-        {
-            target = eventData.pointerEnter.GetComponentInParent<PackageItemUI>();
-        }
-        
-        if (uiParent != null) uiParent.OnEndDragItem(target);
+        uiParent?.OnEndDragItem(eventData);
     }
 
     private void ResetUI()
@@ -110,6 +157,7 @@ public class PackageItemUI : MonoBehaviour, IPointerClickHandler, IPointerEnterH
         if (UIIcon != null) UIIcon.gameObject.SetActive(false);
         if (UINumbel != null) UINumbel.gameObject.SetActive(false);
         if (UINew != null) UINew.gameObject.SetActive(false);
+        if (UIArtifactImage != null) UIArtifactImage.gameObject.SetActive(false);
         if (UISelect != null) UISelect.gameObject.SetActive(false);
         if (BK != null) BK.color = Color.white;
     }
@@ -121,24 +169,23 @@ public class PackageItemUI : MonoBehaviour, IPointerClickHandler, IPointerEnterH
         UpdateInfo();
         SetSelectState(isSelected);
     }
-    
+
     private async void UpdateIcon()
     {
-        if (UIIcon != null && !string.IsNullOrEmpty(packageItem.iconName))
+        if (UIIcon == null || string.IsNullOrEmpty(packageItem.iconName))
         {
-            // 直接使用配置的iconName加载Addressable资源
-            Sprite sp = await GameMgr.AssetLoader.LoadAsset<Sprite>(packageItem.iconName);
+            return;
+        }
 
-            if (sp != null && UIIcon != null)
-            {
-                UIIcon.GetComponent<Image>().sprite = sp;
-                // 确保图片组件是激活的
-                UIIcon.gameObject.SetActive(true);
-            }
-            else
-            {
-                 Debug.LogWarning($"[PackageItemUI] Failed to load icon: {packageItem.iconName} for item: {packageItem.name}");
-            }
+        Sprite sp = await GameMgr.IconAtlas.GetItemIcon(packageItem);
+        if (sp != null && UIIcon != null)
+        {
+            UIIcon.GetComponent<Image>().sprite = sp;
+            UIIcon.gameObject.SetActive(true);
+        }
+        else
+        {
+            Debug.LogWarning($"[PackageItemUI] Failed to load icon: {packageItem.iconName} for item: {packageItem.name}");
         }
     }
 
@@ -146,15 +193,15 @@ public class PackageItemUI : MonoBehaviour, IPointerClickHandler, IPointerEnterH
     {
         if (UINumbel != null)
         {
-            var numTextTMP = UINumbel.GetComponent<TextMeshProUGUI>();
-            var numTextLegacy = UINumbel.GetComponent<Text>();
+            TextMeshProUGUI numTextTMP = UINumbel.GetComponent<TextMeshProUGUI>();
+            Text numTextLegacy = UINumbel.GetComponent<Text>();
 
             if (packageItem.itemType != ItemType.Weapon && inventoryItem.count > 1)
             {
                 string countStr = inventoryItem.count.ToString();
                 if (numTextTMP != null) numTextTMP.text = countStr;
                 else if (numTextLegacy != null) numTextLegacy.text = countStr;
-                
+
                 UINumbel.gameObject.SetActive(true);
             }
             else
@@ -165,44 +212,28 @@ public class PackageItemUI : MonoBehaviour, IPointerClickHandler, IPointerEnterH
 
         if (UINew != null)
         {
-            // 修复 isNew 显示逻辑：只有显式为 true 时才显示
-            UINew.gameObject.SetActive(inventoryItem.isNew == true);
+            UINew.gameObject.SetActive(inventoryItem.isNew);
+        }
+
+        if (UIArtifactImage != null)
+        {
+            UIArtifactImage.gameObject.SetActive(IsArtifactWeapon());
         }
     }
 
     private void UpdateBKModel()
     {
-        if (BK == null) return;
-
-        // 如果被批量删除选中，背景变暗红色
-        if (isDeleteSelected)
+        if (BK == null)
         {
-            BK.color = new Color(0.5f, 0.1f, 0.1f, 1f); // 暗红色
             return;
         }
 
-        // 根据 Quality 设置背景颜色 (使用更鲜明的颜色以示区别)
-        switch (packageItem.quality)
-        {
-            case ItemQuality.Common:
-                BK.color = new Color(0.24f, 0.28f, 0.35f, 1f); // 灰蓝色 (普通)
-                break;
-            case ItemQuality.Advanced:
-                BK.color = new Color(0.12f, 0.45f, 0.12f, 1f); // 翠绿色 (高级)
-                break;
-            case ItemQuality.Rare:
-                BK.color = new Color(0.12f, 0.35f, 0.65f, 1f); // 宝石蓝 (稀有)
-                break;
-            case ItemQuality.Epic:
-                BK.color = new Color(0.45f, 0.12f, 0.65f, 1f); // 幻想紫 (史诗)
-                break;
-            case ItemQuality.Legendary:
-                BK.color = new Color(0.75f, 0.45f, 0.12f, 1f); // 传说的橙色 (传说)
-                break;
-            default:
-                BK.color = new Color(0.24f, 0.28f, 0.35f, 1f);
-                break;
-        }
+        BK.color = GetCurrentBKColor();
+    }
+
+    private bool IsArtifactWeapon()
+    {
+        return packageItem is WeaponItem weaponItem && weaponItem.IsArtifactWeapon;
     }
 
     public void ToggleDeleteSelect()
@@ -213,26 +244,45 @@ public class PackageItemUI : MonoBehaviour, IPointerClickHandler, IPointerEnterH
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        // 如果是空白格，点击无效
-        if (inventoryItem == null || packageItem == null) return;
+        if (inventoryItem == null || packageItem == null)
+        {
+            return;
+        }
 
-        // 如果当前是批量删除模式
         if (uiParent != null && uiParent.IsInDeleteMode)
         {
             uiParent.OnItemClickedInDeleteMode(this, inventoryItem);
             return;
         }
 
-        // 移除点击选中逻辑
+        if (eventData.button != PointerEventData.InputButton.Right)
+        {
+            return;
+        }
+
+        if (packageItem is ConsumableItem)
+        {
+            if (GameMgr.Package != null && GameMgr.Package.UseConsumable(packageItem.id))
+            {
+                uiParent?.RefreshUi();
+            }
+
+            return;
+        }
+
+        if (packageItem is WeaponItem)
+        {
+            uiParent?.TryQuickEquipInventoryItem(inventoryItem);
+        }
     }
 
-    public void SetSelectState(bool isSelected)
+    public void SetSelectState(bool selected)
     {
-        this.isSelected = isSelected;
+        isSelected = selected;
         if (UISelect != null)
         {
-            UISelect.gameObject.SetActive(isSelected);
-            if (isSelected)
+            UISelect.gameObject.SetActive(selected);
+            if (selected)
             {
                 UpdateSelectFrame();
             }
@@ -241,18 +291,17 @@ public class PackageItemUI : MonoBehaviour, IPointerClickHandler, IPointerEnterH
 
     private async void UpdateSelectFrame()
     {
-        string spriteName = "select_normal";
-        switch (packageItem.quality)
+        string spriteName = packageItem.quality switch
         {
-            case ItemQuality.Common: spriteName = "select_normal"; break;
-            case ItemQuality.Advanced: spriteName = "select_advance"; break;
-            case ItemQuality.Rare: spriteName = "select_rare"; break;
-            case ItemQuality.Epic: spriteName = "select_epic"; break;
-            case ItemQuality.Legendary: spriteName = "select_legend"; break; 
-            default: spriteName = "select_normal"; break;
-        }
+            ItemQuality.Common => "select_normal",
+            ItemQuality.Advanced => "select_advance",
+            ItemQuality.Rare => "select_rare",
+            ItemQuality.Epic => "select_epic",
+            ItemQuality.Legendary => "select_legend",
+            _ => "select_normal"
+        };
 
-        Sprite sp = await GameMgr.AssetLoader.LoadAsset<Sprite>(spriteName);
+        Sprite sp = await GameMgr.IconAtlas.GetPackageUISprite(spriteName);
         if (sp != null && UISelect != null)
         {
             UISelect.GetComponent<Image>().sprite = sp;
@@ -261,48 +310,61 @@ public class PackageItemUI : MonoBehaviour, IPointerClickHandler, IPointerEnterH
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        // 如果是空白格，悬停无效
-        if (inventoryItem == null || packageItem == null) return;
+        if (inventoryItem == null || packageItem == null || !gameObject.activeInHierarchy)
+        {
+            return;
+        }
 
-        // 批量删除模式下不显示详情面板
-        if (uiParent != null && uiParent.IsInDeleteMode) return;
+        if (uiParent != null && (uiParent.IsInDeleteMode || uiParent.IsDragging))
+        {
+            return;
+        }
 
-        // 1. 立即显示选中框
+        GameMgr.Audio?.PlayUIEffect(HoverSoundName);
+
         if (UISelect != null)
         {
             UISelect.gameObject.SetActive(true);
             UpdateSelectFrame();
         }
 
-        // 2. 立即显示信息面板 (不再使用协程延迟)
         if (uiParent != null && inventoryItem != null)
         {
-            // 触发显示信息面板，但不改变“点击选中”状态
+            ItemInfoPanel infoPanel = GameMgr.UI.GetPanelWithoutLoad<ItemInfoPanel>();
+            if (infoPanel != null && !infoPanel.CanBeOverriddenBy(ItemInfoPanel.InfoOwner.PackageHover))
+            {
+                return;
+            }
+
             uiParent.OnShowHoverInfo(inventoryItem, this);
-            
-            // 如果是新物品，看一眼后就重置 isNew 状态
+
             if (inventoryItem.isNew)
             {
                 inventoryItem.isNew = false;
-                if (UINew != null) UINew.gameObject.SetActive(false);
+                if (UINew != null)
+                {
+                    UINew.gameObject.SetActive(false);
+                }
             }
         }
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        // 1. 隐藏选中框
-        if (UISelect != null) 
+        if (!gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        if (UISelect != null)
         {
             UISelect.gameObject.SetActive(false);
         }
 
-        // 2. 关闭信息面板 (如果正在显示)
-        GameMgr.UI.HidePanel<ItemInfoPanel>();
-    }
-
-    private void OnDisable()
-    {
-        // 销毁或禁用时清理 (这里不再需要清理协程，但保留方法结构以防后续添加其他逻辑)
+        ItemInfoPanel infoPanel = GameMgr.UI.GetPanelWithoutLoad<ItemInfoPanel>();
+        if (infoPanel != null)
+        {
+            infoPanel.TryHideFrom(ItemInfoPanel.InfoOwner.PackageHover);
+        }
     }
 }

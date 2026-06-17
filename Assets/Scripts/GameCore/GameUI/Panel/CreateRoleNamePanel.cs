@@ -11,6 +11,9 @@ public class CreateRoleNamePanel : BasePanel
     private Transform UICancelButton;
     private Transform UIRoleNameInput;
 
+    // 防止重复点击
+    private bool isCreating = false;
+
     protected override void Awake()
     {
         base.Awake();
@@ -38,37 +41,40 @@ public class CreateRoleNamePanel : BasePanel
             UICancelButton.GetComponent<Button>().onClick.AddListener(OnClickCancel);
     }
 
-    private void OnClickEnsure()
+    private async void OnClickEnsure()
     {
-        Debug.Log("[CreateRoleNamePanel] OnClickEnsure called");
+        // 防止重复点击
+        if (isCreating) return;
 
         // 获取输入的玩家姓名
         TMP_InputField inputField = UIRoleNameInput?.GetComponent<TMP_InputField>();
         if (inputField == null)
         {
-            Debug.LogError("[CreateRoleNamePanel] InputField component not found!");
             return;
         }
 
         string playerName = inputField?.text;
-        Debug.Log($"[CreateRoleNamePanel] Input playerName: '{playerName}'");
 
         if (string.IsNullOrEmpty(playerName))
         {
-            Debug.Log("[CreateRoleNamePanel] 请输入玩家姓名");
             return;
         }
 
-        Debug.Log($"[CreateRoleNamePanel] 创建角色，姓名: {playerName}");
+        isCreating = true;
 
-        // 创建新存档，传入玩家姓名
-        GameMgr.File.CreateNewGame(playerName);
+        // 创建新存档，传入玩家姓名和角色模型名称
+        GameMgr.File.CreateNewGame(playerName, CreateRolePanel.currentSelectedRoleModelName);
+        GameMgr.Account?.SetDisplayName(playerName);
 
-        Debug.Log("[CreateRoleNamePanel] Save created, destroying panels and loading scene...");
+        // 设置当前角色模型名称，以便进入游戏后替换模型
+        PlayerModelManager.CurrentRoleModelName = CreateRolePanel.currentSelectedRoleModelName;
 
-        // 直接销毁所有UI面板，进入游戏场景
-        GameMgr.UI.DestroyAllPanels();
-        GameMgr.Scene.LoadSceneAsync("GameScene").Forget();
+        LoadingResult result = await GameMgr.Scene.LoadSceneAsync("GameScene");
+        if (!result.Success)
+        {
+            isCreating = false;
+            Debug.LogError($"[CreateRoleNamePanel] Failed to enter game scene: {result.ErrorMessage}");
+        }
     }
 
     private void OnClickCancel()

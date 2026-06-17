@@ -24,6 +24,8 @@ public class AssetLoader
     //将加载资源的权柄存入字典中
     public Dictionary<string, AddressablesInfo> loadedAssetDic = new Dictionary<string, AddressablesInfo>();
     public Dictionary<string, GameObject> loadedPrefabDic = new Dictionary<string, GameObject>();
+    private readonly Dictionary<string, UniTaskCompletionSource<GameObject>> loadingPrefabTasks =
+        new Dictionary<string, UniTaskCompletionSource<GameObject>>();
 
     /// <summary>
     /// 加载场景
@@ -42,41 +44,63 @@ public class AssetLoader
         await handle.ToUniTask(progress);
         //执行场景加载完成的回调函数
         loadSuccessCallBack?.Invoke(handle.Result);
-        GameMgr.Instance.LoadedScene = handle.Result;
     }
 
     public async UniTask<GameObject> LoadPrefab(string prefabName, Action<GameObject> LoadSuccessCallBack = null)
     {
-        if (!loadedPrefabDic.ContainsKey(prefabName))       // 已加载的字典中是否有
+        if (string.IsNullOrWhiteSpace(prefabName))
         {
-            try
+            Debug.LogWarning("[AssetLoader] LoadPrefab called with empty prefab name.");
+            return null;
+        }
+
+        if (loadedPrefabDic.TryGetValue(prefabName, out GameObject cachedPrefab))
+        {
+            LoadSuccessCallBack?.Invoke(cachedPrefab);
+            return cachedPrefab;
+        }
+
+        if (loadingPrefabTasks.TryGetValue(prefabName, out UniTaskCompletionSource<GameObject> pendingTask))
+        {
+            GameObject pendingPrefab = await pendingTask.Task;
+            LoadSuccessCallBack?.Invoke(pendingPrefab);
+            return pendingPrefab;
+        }
+
+        UniTaskCompletionSource<GameObject> loadingTask = new UniTaskCompletionSource<GameObject>();
+        loadingPrefabTasks[prefabName] = loadingTask;
+
+        try
+        {
+            AsyncOperationHandle<GameObject> handle = Addressables.LoadAssetAsync<GameObject>(prefabName);
+            await handle.ToUniTask();
+
+            if (handle.Status == AsyncOperationStatus.Succeeded)
             {
-                // 无，进行资源加载
-                AsyncOperationHandle<GameObject> handle = Addressables.LoadAssetAsync<GameObject>(prefabName);      // 异步记载资源
-                
-                await handle.ToUniTask();       // 等待加载完成
-                
-                if (handle.Status == AsyncOperationStatus.Succeeded)
-                {
-                    loadedPrefabDic.Add(prefabName, handle.Result);      // 完成后加入字典
-                    LoadSuccessCallBack?.Invoke(handle.Result);     // 完成后使用回调函数
-                    return handle.Result;                           // 返回加载结果
-                }
-                else
-                {
-                    Debug.LogError($"[AssetLoader] LoadPrefab Failed: {prefabName}, Status: {handle.Status}");
-                    return null;
-                }
+                loadedPrefabDic[prefabName] = handle.Result;
+                loadingTask.TrySetResult(handle.Result);
+                LoadSuccessCallBack?.Invoke(handle.Result);
+                return handle.Result;
             }
-            catch (Exception e)
+
+            Debug.LogError($"[AssetLoader] LoadPrefab Failed: {prefabName}, Status: {handle.Status}");
+            loadingTask.TrySetResult(null);
+            return null;
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[AssetLoader] Exception in LoadPrefab({prefabName}): {e}");
+            loadingTask.TrySetResult(null);
+            return null;
+        }
+        finally
+        {
+            if (loadingPrefabTasks.TryGetValue(prefabName, out UniTaskCompletionSource<GameObject> task) &&
+                task == loadingTask)
             {
-                Debug.LogError($"[AssetLoader] Exception in LoadPrefab({prefabName}): {e}");
-                return null;
+                loadingPrefabTasks.Remove(prefabName);
             }
         }
-        // 有，返回字典储存的信息
-        LoadSuccessCallBack?.Invoke(loadedPrefabDic[prefabName]);
-        return loadedPrefabDic[prefabName];
     }
 
     // 记录正在加载的任务，防止重复加载导致的 Race Condition
@@ -167,13 +191,75 @@ public class AssetLoader
 
     public void Clear()
     {
-        foreach (var item in loadedAssetDic.Values)
+        // 分步清理，避免一次性释放大量资源
+        if (loadedAssetDic.Count > 0)
         {
-            Addressables.Release(item.handle);
+            var keysToRemove = new List<string>(loadedAssetDic.Keys);
+            foreach (var key in keysToRemove)
+            {
+                if (loadedAssetDic.TryGetValue(key, out var info))
+                {
+                    Addressables.Release(info.handle);
+                }
+            }
+            loadedAssetDic.Clear();
         }
-        loadedAssetDic.Clear();
-        AssetBundle.UnloadAllAssetBundles(true);
+
+        // 清理预制体缓存
+        if (loadedPrefabDic.Count > 0)
+        {
+            var prefabKeys = new List<string>(loadedPrefabDic.Keys);
+            foreach (var key in prefabKeys)
+            {
+                if (loadedPrefabDic.TryGetValue(key, out var prefab) && prefab != null)
+                {
+                    Addressables.Release(prefab);
+                }
+            }
+            loadedPrefabDic.Clear();
+        }
+
+        // 使用异步方式清理未使用的资源，避免同步阻塞
         Resources.UnloadUnusedAssets();
-        GC.Collect();
+    }
+    
+    /// <summary>
+    /// 异步清理资源（推荐使用）
+    /// </summary>
+    public async UniTask ClearAsync()
+    {
+        // 分步清理，避免一次性释放大量资源
+        if (loadedAssetDic.Count > 0)
+        {
+            var keysToRemove = new List<string>(loadedAssetDic.Keys);
+            foreach (var key in keysToRemove)
+            {
+                if (loadedAssetDic.TryGetValue(key, out var info))
+                {
+                    Addressables.Release(info.handle);
+                    await UniTask.Yield(); // 每释放一个资源后让出一帧
+                }
+            }
+            loadedAssetDic.Clear();
+        }
+
+        // 清理预制体缓存
+        if (loadedPrefabDic.Count > 0)
+        {
+            var prefabKeys = new List<string>(loadedPrefabDic.Keys);
+            foreach (var key in prefabKeys)
+            {
+                if (loadedPrefabDic.TryGetValue(key, out var prefab) && prefab != null)
+                {
+                    Addressables.Release(prefab);
+                    await UniTask.Yield();
+                }
+            }
+            loadedPrefabDic.Clear();
+        }
+
+        // 异步清理未使用的资源
+        var unloadOperation = Resources.UnloadUnusedAssets();
+        await unloadOperation;
     }
 }

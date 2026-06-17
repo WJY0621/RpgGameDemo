@@ -104,8 +104,8 @@ public class TransitionSequencer
             var enterSteps = GatherPhaseSteps(enterChain, deactivate: false);
             //sequencer = new NoopPhase();
             sequencer = UseSequential ?
-                new SequentialPhase(exitSteps, cts.Token) :
-                new ParallelPhase(exitSteps, cts.Token);
+                new SequentialPhase(enterSteps, cts.Token) :
+                new ParallelPhase(enterSteps, cts.Token);
             sequencer.Start();
         };
     }

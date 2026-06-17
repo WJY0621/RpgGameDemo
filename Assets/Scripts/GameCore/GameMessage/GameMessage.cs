@@ -16,4 +16,5 @@ public class GameMessage
     //播放音效
     public string sound;
     public MessagePriority priority;
+    public Transform targetParent;
 }

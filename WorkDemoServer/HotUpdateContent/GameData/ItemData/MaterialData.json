@@ -1,0 +1,124 @@
+{
+    "items": [
+        {
+            "itemId": 3001,
+            "itemName": "木头",
+            "itemType": "Material",
+            "quality": "Common",
+            "qualityValue": 1,
+            "description": "要想富先砍树",
+            "iconName": "Icon_Woot",
+            "buyPrice": 2,
+            "sellPrice": 1,
+            "maxStack": 867
+        },
+        {
+            "itemId": 3002,
+            "itemName": "石块",
+            "itemType": "Material",
+            "quality": "Common",
+            "qualityValue": 1,
+            "description": "凿石头的产物",
+            "iconName": "Icon_Stone",
+            "buyPrice": 2,
+            "sellPrice": 1,
+            "maxStack": 867
+        },
+        {
+            "itemId": 3003,
+            "itemName": "铁块",
+            "itemType": "Material",
+            "quality": "Advanced",
+            "qualityValue": 2,
+            "description": "矿洞中铁矿产出",
+            "iconName": "Icon_Iron",
+            "buyPrice": 5,
+            "sellPrice": 3,
+            "maxStack": 867
+        },
+        {
+            "itemId": 3004,
+            "itemName": "银块",
+            "itemType": "Material",
+            "quality": "Rare",
+            "qualityValue": 3,
+            "description": "矿洞中银矿产出",
+            "iconName": "Icon_Silver",
+            "buyPrice": 20,
+            "sellPrice": 10,
+            "maxStack": 867
+        },
+        {
+            "itemId": 3005,
+            "itemName": "金块",
+            "itemType": "Material",
+            "quality": "Epic",
+            "qualityValue": 4,
+            "description": "矿洞中金矿产出",
+            "iconName": "Icon_Gold",
+            "buyPrice": 100,
+            "sellPrice": 50,
+            "maxStack": 867
+        },
+        {
+            "itemId": 3006,
+            "itemName": "红宝石",
+            "itemType": "Material",
+            "quality": "Legendary",
+            "qualityValue": 5,
+            "description": "由强大怪物掉落",
+            "iconName": "Icon_Gem_Red",
+            "buyPrice": 1000,
+            "sellPrice": 500,
+            "maxStack": 867
+        },
+        {
+            "itemId": 3007,
+            "itemName": "蓝宝石",
+            "itemType": "Material",
+            "quality": "Legendary",
+            "qualityValue": 5,
+            "description": "矿洞中神秘矿物产出",
+            "iconName": "Icon_Gem_Blue",
+            "buyPrice": 1000,
+            "sellPrice": 500,
+            "maxStack": 867
+        },
+        {
+            "itemId": 3008,
+            "itemName": "绿叶",
+            "itemType": "Material",
+            "quality": "Common",
+            "qualityValue": 1,
+            "description": "可以用于制作药剂",
+            "iconName": "Icon_leaf",
+            "buyPrice": 1,
+            "sellPrice": 1,
+            "maxStack": 867
+        },
+        {
+            "itemId": 3009,
+            "itemName": "兽齿",
+            "itemType": "Material",
+            "quality": "Advanced",
+            "qualityValue": 2,
+            "description": "常见的怪物牙齿",
+            "iconName": "Icon_Tooth_01",
+            "buyPrice": 10,
+            "sellPrice": 5,
+            "maxStack": 867
+        },
+        {
+            "itemId": 3010,
+            "itemName": "兽骨",
+            "itemType": "Material",
+            "quality": "Rare",
+            "qualityValue": 3,
+            "description": "优质的怪兽骨头",
+            "iconName": "Icon_Tooth_02",
+            "buyPrice": 50,
+            "sellPrice": 25,
+            "maxStack": 867
+        }
+    ]
+}

@@ -2,5 +2,7 @@
 public enum DialogueType
 {
     SingleChoice,
-    MultipleChoice
+    MultipleChoice,
+    Event,
+    Start
 }

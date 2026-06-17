@@ -1,16 +1,27 @@
-using System.Collections;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 [SceneController(sceneName = "GameStartScene", isGameScene = false)]
 public class StartSceneController : SceneControllerBase
 {
-    public override async void OnSceneEnter()
+    private const string StartBGMName = "BGM_Start";
+
+    public override async UniTask OnSceneEnterAsync()
     {
+        PlayStartBGM();
+
         // 确保在开始菜单场景中鼠标是可见的
         GameMgr.Cursor.SetCursorState(true);
         GameMgr.input.EnableUIActionMap();
 
-        await GameMgr.UI.ShowPanel<GameStartPanel>();
+        GameStartPanel panel = await GameMgr.UI.ShowPanel<GameStartPanel>();
+        if (panel != null)
+        {
+            await panel.WaitUntilFullyShownAsync();
+        }
+    }
+
+    private void PlayStartBGM()
+    {
+        GameMgr.Audio?.PlayBGM(StartBGMName);
     }
 }

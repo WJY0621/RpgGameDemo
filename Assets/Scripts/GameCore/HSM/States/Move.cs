@@ -14,7 +14,7 @@ public class Move : State
         walking = new Walking(machine, this, ctx);
     }
 
-    protected override State GetInitialState() => walking;
+    protected override State GetInitialState() => GameMgr.input.Data.RunInput ? (State)Run : walking;
     
     protected override State GetTransition()
     {
@@ -31,5 +31,7 @@ public class Move : State
     protected override void OnExit()
     {
         ctx.isMoving = false;
+        ctx.isWalkingState = false;
+        ctx.isRunningState = false;
     }
 }

@@ -1,256 +1,122 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class PackagePanel : BasePanel
 {
-    private Transform UIMenu;
-    private Transform UIMenuWeapon;
-    private Transform UIMenuConsum;
-    private Transform UIMenuMaterial;
-    private Transform UICloseButton;
-    private Transform UISortButton;
-    private Transform UIDeleteButton;
-    private Transform UICoinNum;
-    private Transform UIScrollView;
-    private Transform UIDeletePanel;
-    private Transform UIBackButton;
-    private Transform UIEnsureButton;
-    private Transform UIDeleteNum;
+    private const int MinSlots = 25;
+    private const int RowSize = 5;
+    private const string HeadSlotKey = "HeadContent";
+    private const string ChestSlotKey = "ChestContent";
+    private const string LegSlotKey = "LegContent";
+    private const string WeaponSlot1Key = "WeaponContent1";
+    private const string WeaponSlot2Key = "WeaponContent2";
+    private const string ToolSlot1Key = "ToolContent1";
+    private const string ToolSlot2Key = "ToolContent2";
+    private const string AccessorySlot1Key = "AccessContent1";
+    private const string AccessorySlot2Key = "AccessContent2";
+    private const string AccessorySlot3Key = "AccessContent3";
+
+    private Transform weaponTab;
+    private Transform consumTab;
+    private Transform materialTab;
+    private PackageTabItemUI weaponTabItem;
+    private PackageTabItemUI consumTabItem;
+    private PackageTabItemUI materialTabItem;
+    private Transform closeButton;
+    private Transform sortButton;
+    private Transform deleteButton;
+    private Transform coinNum;
+    private Transform scrollView;
+    private Transform deletePanel;
+    private Transform backButton;
+    private Transform ensureButton;
+    private Transform deleteNum;
+
+    private TMP_Text coinNumText;
+    private Text coinNumLegacyText;
+
+    private readonly Dictionary<string, PackageItemUI> itemUIByUid = new Dictionary<string, PackageItemUI>();
+    private readonly List<PackageItemUI> pooledItemUIs = new List<PackageItemUI>();
+    private readonly List<InventoryItem> selectedDeleteItems = new List<InventoryItem>();
+
+    private ItemType currentType = ItemType.Weapon;
+    private bool isInDeleteMode;
+    private int refreshVersion;
+
+    private PackagePanelDragController dragController;
+    private PackagePanelHoverController hoverController;
+
+    public bool IsInDeleteMode => isInDeleteMode;
+    public bool IsDragging => dragController != null && dragController.IsDragging;
 
     protected override void Awake()
     {
         base.Awake();
         Init();
     }
+
     public override void Init()
     {
-        InitUIName();
-        InitClick();
+        dragController = new PackagePanelDragController(this);
+        hoverController = new PackagePanelHoverController(this);
+
+        BindReferences();
+        BindClicks();
+        RefreshCurrentTab();
     }
 
     public override void Show()
     {
         base.Show();
-        // 默认显示武器页面
-        OnClickWeapon();
+        BindReferences();
+        BindClicks();
+        RefreshCurrentTab();
+        RefreshCoinNum();
     }
 
-    private ItemType currentType = ItemType.Weapon; 
-    private InventoryItem currentSelectedItem;
+    protected override void Update()
+    {
+        base.Update();
+        hoverController?.MaintainVisibility();
+    }
 
     public void RefreshUi()
     {
+        RefreshCoinNum();
         RefreshScroll();
     }
 
-    private Dictionary<string, PackageItemUI> itemUIByUid = new Dictionary<string, PackageItemUI>();
-    private List<PackageItemUI> pooledItemUIs = new List<PackageItemUI>(); // 对象池列表
-    private const int MIN_SLOTS = 25; // 最少显示的格子数
-    private const int ROW_SIZE = 5;   // 每行格子的数量
-    
-    // 记录当前拖拽中的物品和格子
-    private PackageItemUI draggingUI;
-    private Transform draggingIcon;
-
     public void OnBeginDragItem(PackageItemUI ui)
     {
-        if (ui == null || ui.PackageItem == null) return;
-        
-        draggingUI = ui;
-        
-        // 1. 获取原格子组件
-        Image sourceImg = ui.GetComponent<Image>();
-        if (sourceImg == null)
-        {
-            Debug.LogError("[PackagePanel] Cannot find Image on dragged item slot!");
-            return;
-        }
-
-        // 2. 克隆整个格子物体 (包含背景、图标、边框等)
-        GameObject dragObj = Instantiate(ui.gameObject);
-        dragObj.name = "DraggingItem";
-        
-        // 3. 移除脚本组件，防止逻辑干扰
-        Destroy(dragObj.GetComponent<PackageItemUI>());
-        // 也可以移除 Button 组件如果存在
-        if (dragObj.GetComponent<Button>() != null) Destroy(dragObj.GetComponent<Button>());
-        
-        // 4. 挂载到根 Canvas
-        Canvas rootCanvas = GetComponentInParent<Canvas>();
-        dragObj.transform.SetParent(rootCanvas != null ? rootCanvas.transform : this.transform.parent, true);
-        
-        // 5. 重置 RectTransform
-        RectTransform rt = dragObj.GetComponent<RectTransform>();
-        RectTransform sourceRt = ui.GetComponent<RectTransform>();
-        
-        rt.anchorMin = new Vector2(0.5f, 0.5f);
-        rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.pivot = new Vector2(0.5f, 0.5f);
-        
-        // 使用原格子大小
-        rt.sizeDelta = sourceRt.sizeDelta;
-        rt.position = sourceRt.position;
-        rt.localScale = Vector3.one; // 强制缩放为 1
-        
-        // 6. 添加 CanvasGroup 控制透明度和射线阻挡
-        CanvasGroup cg = dragObj.GetComponent<CanvasGroup>();
-        if (cg == null) cg = dragObj.AddComponent<CanvasGroup>();
-        cg.blocksRaycasts = false; // 关键：不阻挡射线，否则无法放下
-        cg.alpha = 0.8f; // 稍微半透明，体现拖拽感
-        
-        dragObj.transform.SetAsLastSibling(); 
-        draggingIcon = dragObj.transform;
-        
-        // 隐藏原格子的图标 (只隐藏图标，保留背景，表示格子还在)
-        ui.SetIconVisible(false);
+        dragController?.BeginDrag(ui);
     }
 
     public void OnDragItem(PointerEventData eventData)
     {
-        if (draggingIcon != null)
-        {
-            // 兼容多种 Canvas 渲染模式的坐标转换
-            Vector3 globalMousePos;
-            if (RectTransformUtility.ScreenPointToWorldPointInRectangle(draggingIcon.parent as RectTransform, eventData.position, eventData.pressEventCamera, out globalMousePos))
-            {
-                draggingIcon.position = globalMousePos;
-            }
-        }
+        dragController?.Drag(eventData);
     }
 
-    public void OnEndDragItem(PackageItemUI targetUI)
+    public void OnEndDragItem(PointerEventData eventData)
     {
-        if (draggingUI != null)
-        {
-            // 显示原格子图标（无论交换是否成功，都要恢复原位显示，刷新会处理位置）
-            draggingUI.SetIconVisible(true);
-
-            // 如果落点是一个有效的格子（包括空白格）
-            if (targetUI != null && targetUI != draggingUI)
-            {
-                // 执行数据交换
-                GameMgr.Package.SwapItemSlots(currentType, draggingUI.ItemIndex, targetUI.ItemIndex);
-                // 刷新界面
-                RefreshUi();
-            }
-        }
-
-        // 清理临时图标
-        if (draggingIcon != null)
-        {
-            Destroy(draggingIcon.gameObject);
-            draggingIcon = null;
-        }
-        draggingUI = null;
+        dragController?.EndDrag(eventData);
     }
 
-    private async void RefreshScroll()
+    public void OnShowHoverInfo(InventoryItem item, PackageItemUI itemUI)
     {
-        RectTransform scrollContent = UIScrollView.GetComponent<ScrollRect>().content;
-        
-        // 1. 将当前所有显示的格子回收进池子（隐藏即可）
-        foreach (var ui in pooledItemUIs)
-        {
-            ui.gameObject.SetActive(false);
-        }
-        itemUIByUid.Clear();
-        
-        // 2. 加载预制体（如果池子为空）
-        GameObject prefab = await GameMgr.AssetLoader.LoadAsset<GameObject>("PackageItemUI");
-        if (prefab == null)
-        {
-            Debug.LogError("[PackagePanel] FAILED to load 'PackageItemUI' prefab!");
-            return;
-        }
-
-        // 3. 获取数据
-        List<InventoryItem> items = await GameMgr.Package.GetItemsByType(currentType);
-        
-        // 计算需要的总格子数
-        int totalSlots = Mathf.Max(MIN_SLOTS, items.Count > 0 ? items[items.Count - 1].slotIndex + 1 : 0);
-        if (totalSlots % ROW_SIZE != 0)
-        {
-            totalSlots += (ROW_SIZE - (totalSlots % ROW_SIZE));
-        }
-
-        // 4. 生成/激活格子
-        for (int i = 0; i < totalSlots; i++)
-        {
-            PackageItemUI ui;
-            if (i < pooledItemUIs.Count)
-            {
-                ui = pooledItemUIs[i];
-                ui.gameObject.SetActive(true);
-            }
-            else
-            {
-                GameObject obj = Instantiate(prefab, scrollContent);
-                ui = obj.GetComponent<PackageItemUI>();
-                pooledItemUIs.Add(ui);
-            }
-            
-            if(ui != null)
-            {
-                // 关键修复：根据当前格子索引 i 查找是否有对应的物品
-                InventoryItem invItem = items.Find(x => x.slotIndex == i);
-                ui.Refresh(invItem, this, i);
-
-                if (invItem != null)
-                {
-                    itemUIByUid[invItem.uid] = ui;
-                }
-            }
-        }
+        hoverController?.Show(item, itemUI);
     }
-
-
-    private void InitUIName()
-    {
-        UIMenu = transform.Find("CenterTop/Menus");
-        UIMenuWeapon = transform.Find("CenterTop/Menus/Weapon");
-        UIMenuConsum = transform.Find("CenterTop/Menus/Consum");
-        UIMenuMaterial = transform.Find("CenterTop/Menus/Material");
-        UICloseButton = transform.Find("RightTop/CloseButton");
-        UIDeleteButton = transform.Find("RightBot/DeleteButton");
-        UICoinNum = transform.Find("LeftBot/CoinNum");
-        UIScrollView = transform.Find("Center/Scroll View");
-        UIDeletePanel = transform.Find("DeletePanel");
-        UIBackButton = transform.Find("DeletePanel/BackButton");
-        UIEnsureButton = transform.Find("DeletePanel/EnsureButton");
-        UIDeleteNum = transform.Find("DeletePanel/DeleteNum");
-        UISortButton = transform.Find("RightBot/SortButton");
-
-        if (UIDeletePanel != null) UIDeletePanel.gameObject.SetActive(false);
-    }
-
-    private void InitClick()
-    {
-        if(UICloseButton) UICloseButton.GetComponent<Button>().onClick.AddListener(OnClickClose);
-        if(UIDeleteButton) UIDeleteButton.GetComponent<Button>().onClick.AddListener(OnClickDelete);
-        if(UIMenuWeapon) UIMenuWeapon.GetComponent<Button>().onClick.AddListener(OnClickWeapon);
-        if(UIMenuConsum) UIMenuConsum.GetComponent<Button>().onClick.AddListener(OnClickConsum);
-        if(UIMenuMaterial) UIMenuMaterial.GetComponent<Button>().onClick.AddListener(OnClickMaterial);
-        if(UIBackButton) UIBackButton.GetComponent<Button>().onClick.AddListener(OnClickBack);
-        if(UIEnsureButton) UIEnsureButton.GetComponent<Button>().onClick.AddListener(OnClickEnsure);
-        if(UISortButton) UISortButton.GetComponent<Button>().onClick.AddListener(OnClickSort);
-    }
-
-    private void OnClickSort()
-    {
-        GameMgr.Package.SortItemsByType(currentType);
-        RefreshUi();
-    }
-    
-    private bool isInDeleteMode = false;
-    public bool IsInDeleteMode => isInDeleteMode;
-    private List<InventoryItem> selectedDeleteItems = new List<InventoryItem>();
 
     public void OnItemClickedInDeleteMode(PackageItemUI ui, InventoryItem item)
     {
+        if (ui == null || item == null)
+        {
+            return;
+        }
+
         if (selectedDeleteItems.Contains(item))
         {
             selectedDeleteItems.Remove(item);
@@ -259,67 +125,251 @@ public class PackagePanel : BasePanel
         {
             selectedDeleteItems.Add(item);
         }
+
         ui.ToggleDeleteSelect();
         UpdateDeleteNumText();
     }
 
-    private void UpdateDeleteNumText()
+    public bool TryQuickEquipInventoryItem(InventoryItem inventoryItem)
     {
-        if (UIDeleteNum != null)
+        if (inventoryItem == null || GameMgr.Package == null)
         {
-            string text = $"已选 {selectedDeleteItems.Count}/100";
-            var textComp = UIDeleteNum.GetComponent<Text>();
-            if (textComp != null) textComp.text = text;
-            else
+            return false;
+        }
+
+        Item config = GameMgr.Package.GetItemConfig(inventoryItem.itemId);
+        if (config is not WeaponItem weaponItem)
+        {
+            return false;
+        }
+
+        EquipPanel equipPanel = GameMgr.UI.GetPanelWithoutLoad<EquipPanel>();
+        if (equipPanel != null && equipPanel.gameObject.activeInHierarchy)
+        {
+            return equipPanel.TryEquipInventoryItem(inventoryItem);
+        }
+
+        string[] compatibleSlotKeys = GetCompatibleSlotKeys(weaponItem.equipSlot);
+        if (compatibleSlotKeys == null || compatibleSlotKeys.Length == 0)
+        {
+            return false;
+        }
+
+        if (weaponItem.equipSlot == EquipmentSlot.Weapon && AreAllSlotsEquipped(compatibleSlotKeys))
+        {
+            ShowWeaponReplaceTip(inventoryItem);
+            return false;
+        }
+
+        for (int i = 0; i < compatibleSlotKeys.Length; i++)
+        {
+            string slotKey = compatibleSlotKeys[i];
+            if (GameMgr.Package.GetEquippedInventoryItem(slotKey) != null)
             {
-                var tmpComp = UIDeleteNum.GetComponent<TMPro.TextMeshProUGUI>();
-                if (tmpComp != null) tmpComp.text = text;
+                continue;
+            }
+
+            EquipInventoryItemToSlot(slotKey, inventoryItem);
+            return true;
+        }
+
+        EquipInventoryItemToSlot(compatibleSlotKeys[0], inventoryItem);
+        return true;
+    }
+
+    public void SelectTab(ItemType type)
+    {
+        currentType = type;
+        UpdateTabHighlight(currentType);
+        RefreshUi();
+    }
+
+    public void OnTabClicked(PackageTabItemUI tabItem)
+    {
+        if (tabItem == null)
+        {
+            return;
+        }
+
+        SelectTab(tabItem.ItemType);
+    }
+
+    public bool ResolveDropTargets(
+        PointerEventData eventData,
+        PackageItemUI sourceUI,
+        out PackageItemUI targetUI,
+        out EquipSlotUI equipSlotUI,
+        out PlayerMainLiquidSlotUI liquidSlotUI)
+    {
+        targetUI = null;
+        equipSlotUI = null;
+        liquidSlotUI = null;
+
+        if (EventSystem.current == null || eventData == null)
+        {
+            return false;
+        }
+
+        List<RaycastResult> results = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(eventData, results);
+        for (int i = 0; i < results.Count; i++)
+        {
+            GameObject hitObject = results[i].gameObject;
+            if (hitObject == null)
+            {
+                continue;
+            }
+
+            PackageItemUI hitPackageItem = hitObject.GetComponentInParent<PackageItemUI>();
+            if (hitPackageItem != null && hitPackageItem != sourceUI)
+            {
+                targetUI = hitPackageItem;
+                return true;
+            }
+
+            EquipSlotUI hitEquipSlot = hitObject.GetComponentInParent<EquipSlotUI>();
+            if (hitEquipSlot != null)
+            {
+                equipSlotUI = hitEquipSlot;
+                return true;
+            }
+
+            PlayerMainLiquidSlotUI hitLiquidSlot = hitObject.GetComponentInParent<PlayerMainLiquidSlotUI>();
+            if (hitLiquidSlot != null)
+            {
+                liquidSlotUI = hitLiquidSlot;
+                return true;
             }
         }
+
+        return false;
+    }
+
+    public void RefreshPackageSlotVisual(PackageItemUI sourceUI)
+    {
+        if (sourceUI == null)
+        {
+            return;
+        }
+
+        sourceUI.SetDraggingState(false);
+    }
+
+    public void BindReferences()
+    {
+        weaponTab = transform.Find("CenterTop/BK/Menus/Weapon");
+        consumTab = transform.Find("CenterTop/BK/Menus/Consum");
+        materialTab = transform.Find("CenterTop/BK/Menus/Material");
+        closeButton = transform.Find("RightTop/CloseButton");
+        sortButton = transform.Find("RightBot/SortButton");
+        deleteButton = transform.Find("RightBot/DeleteButton");
+        coinNum = transform.Find("LeftBot/CoinNum");
+        scrollView = transform.Find("Center/Scroll View");
+        deletePanel = transform.Find("DeletePanel");
+        backButton = transform.Find("DeletePanel/BackButton");
+        ensureButton = transform.Find("DeletePanel/EnsureButton");
+        deleteNum = transform.Find("DeletePanel/DeleteNum");
+
+        if (deletePanel != null)
+        {
+            deletePanel.gameObject.SetActive(false);
+        }
+
+        if (coinNum != null)
+        {
+            coinNumText = coinNum.GetComponent<TMP_Text>();
+            coinNumLegacyText = coinNum.GetComponent<Text>();
+        }
+    }
+
+    private void BindClicks()
+    {
+        BindButton(closeButton, OnClickClose);
+        BindButton(sortButton, OnClickSort);
+        BindButton(deleteButton, OnClickDelete);
+        BindButton(backButton, OnClickBack);
+        BindButton(ensureButton, OnClickEnsure);
+
+        weaponTabItem = SetupTabInteraction(weaponTab, ItemType.Weapon);
+        consumTabItem = SetupTabInteraction(consumTab, ItemType.Consumable);
+        materialTabItem = SetupTabInteraction(materialTab, ItemType.Material);
+    }
+
+    private static void BindButton(Transform target, UnityEngine.Events.UnityAction callback)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        Button button = target.GetComponent<Button>();
+        if (button == null)
+        {
+            return;
+        }
+
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(callback);
+    }
+
+    private PackageTabItemUI SetupTabInteraction(Transform tabRoot, ItemType type)
+    {
+        if (tabRoot == null)
+        {
+            return null;
+        }
+
+        PackageTabItemUI tabItem = tabRoot.GetComponent<PackageTabItemUI>();
+        if (tabItem == null)
+        {
+            tabItem = tabRoot.gameObject.AddComponent<PackageTabItemUI>();
+        }
+
+        tabItem.Setup(this, type);
+        return tabItem;
+    }
+
+    private void EnsureTabItems()
+    {
+        if (weaponTabItem == null && weaponTab != null)
+        {
+            weaponTabItem = weaponTab.GetComponent<PackageTabItemUI>();
+        }
+
+        if (consumTabItem == null && consumTab != null)
+        {
+            consumTabItem = consumTab.GetComponent<PackageTabItemUI>();
+        }
+
+        if (materialTabItem == null && materialTab != null)
+        {
+            materialTabItem = materialTab.GetComponent<PackageTabItemUI>();
+        }
+    }
+
+    private void RefreshCurrentTab()
+    {
+        EnsureTabItems();
+        if (!Enum.IsDefined(typeof(ItemType), currentType))
+        {
+            currentType = ItemType.Weapon;
+        }
+
+        UpdateTabHighlight(currentType);
+        RefreshUi();
     }
 
     private void UpdateTabHighlight(ItemType selectedType)
     {
-        // 假设按钮背景颜色变化，或者禁用按钮表示选中
-        // 这里需要知道按钮是否有 Image 组件或者是否有特定的选中态 Image
-        // 简单实现：将选中的按钮变为不可点击（变灰）或者改变颜色
-        // 由于没有具体的 UI 结构信息，这里假设按钮本身有 Image 组件，改变其颜色
-
-        Color normalColor = Color.white;
-        Color selectedColor = new Color(0.8f, 0.8f, 0.8f); // 选中变灰一点
-
-        SetButtonColor(UIMenuWeapon, selectedType == ItemType.Weapon ? selectedColor : normalColor);
-        SetButtonColor(UIMenuConsum, selectedType == ItemType.Consumable ? selectedColor : normalColor);
-        SetButtonColor(UIMenuMaterial, selectedType == ItemType.Material ? selectedColor : normalColor);
+        EnsureTabItems();
+        weaponTabItem?.SetSelected(selectedType == ItemType.Weapon);
+        consumTabItem?.SetSelected(selectedType == ItemType.Consumable);
+        materialTabItem?.SetSelected(selectedType == ItemType.Material);
     }
 
-    private void SetButtonColor(Transform buttonTrans, Color color)
+    private void OnClickSort()
     {
-        if (buttonTrans != null)
-        {
-            var img = buttonTrans.GetComponent<Image>();
-            if (img != null) img.color = color;
-        }
-    }
-
-    private void OnClickMaterial()
-    {
-        currentType = ItemType.Material;
-        UpdateTabHighlight(currentType);
-        RefreshUi();
-    }
-
-    private void OnClickConsum()
-    {
-        currentType = ItemType.Consumable;
-        UpdateTabHighlight(currentType);
-        RefreshUi();
-    }
-
-    private void OnClickWeapon()
-    {
-        currentType = ItemType.Weapon;
-        UpdateTabHighlight(currentType);
+        GameMgr.Package.SortItemsByType(currentType);
         RefreshUi();
     }
 
@@ -327,41 +377,51 @@ public class PackagePanel : BasePanel
     {
         isInDeleteMode = true;
         selectedDeleteItems.Clear();
-        if (UIDeletePanel != null)
+
+        if (deletePanel != null)
         {
-            UIDeletePanel.gameObject.SetActive(true);
-            UpdateDeleteNumText();
+            deletePanel.gameObject.SetActive(true);
         }
+
+        UpdateDeleteNumText();
     }
 
     private void OnClickBack()
     {
         isInDeleteMode = false;
         selectedDeleteItems.Clear();
-        if (UIDeletePanel != null) UIDeletePanel.gameObject.SetActive(false);
-        RefreshUi(); // 刷新以重置物品背景色
+
+        if (deletePanel != null)
+        {
+            deletePanel.gameObject.SetActive(false);
+        }
+
+        RefreshUi();
     }
 
     private async void OnClickEnsure()
     {
-        if (selectedDeleteItems.Count == 0) return;
-
-        TipPanel tip = await GameMgr.UI.GetPanel<TipPanel>();
-        if (tip != null)
+        if (selectedDeleteItems.Count == 0)
         {
-            await tip.ShowTip("是否要删除已选择的物品", () =>
-            {
-                // 确认删除逻辑
-                foreach (var item in selectedDeleteItems)
-                {
-                    GameMgr.Package.RemoveItem(item.uid, item.count);
-                }
-                OnClickBack(); // 退出删除模式并刷新
-            }, () =>
-            {
-                // 点击返回，什么都不做，TipPanel 会自动关闭
-            });
+            return;
         }
+
+        TipPanel tipPanel = await GameMgr.UI.GetPanel<TipPanel>();
+        if (tipPanel == null)
+        {
+            return;
+        }
+
+        await tipPanel.ShowTip("是否要删除已选择的物品？", () =>
+        {
+            for (int i = 0; i < selectedDeleteItems.Count; i++)
+            {
+                InventoryItem item = selectedDeleteItems[i];
+                GameMgr.Package.RemoveItem(item.uid, item.count);
+            }
+
+            OnClickBack();
+        }, null);
     }
 
     private void OnClickClose()
@@ -369,54 +429,234 @@ public class PackagePanel : BasePanel
         GameMgr.UI.HidePanel<PackagePanel>();
     }
 
-    public async void OnShowHoverInfo(InventoryItem item, PackageItemUI itemUI)
+    private void UpdateDeleteNumText()
     {
-        // 获取物品详细数据
-        Item itemData = GameMgr.Package.GetItemConfig(item.itemId);
-        if (itemData != null)
+        if (deleteNum == null)
         {
-            // 显示信息面板
-            ItemInfoPanel infoPanel = await GameMgr.UI.ShowPanel<ItemInfoPanel>();
-            if (infoPanel != null)
+            return;
+        }
+
+        string text = $"已选 {selectedDeleteItems.Count}/100";
+        TMP_Text tmp = deleteNum.GetComponent<TMP_Text>();
+        Text legacy = deleteNum.GetComponent<Text>();
+
+        if (tmp != null)
+        {
+            tmp.text = text;
+        }
+
+        if (legacy != null)
+        {
+            legacy.text = text;
+        }
+    }
+
+    private void RefreshCoinNum()
+    {
+        int gold = GameMgr.Package != null ? GameMgr.Package.GetGold() : 0;
+        string text = gold.ToString();
+
+        if (coinNumText != null)
+        {
+            coinNumText.text = text;
+        }
+
+        if (coinNumLegacyText != null)
+        {
+            coinNumLegacyText.text = text;
+        }
+    }
+
+    private void EquipInventoryItemToSlot(string slotKey, InventoryItem inventoryItem)
+    {
+        if (string.IsNullOrWhiteSpace(slotKey) || inventoryItem == null || GameMgr.Package == null)
+        {
+            return;
+        }
+
+        GameMgr.Package.SetEquippedItem(slotKey, inventoryItem.uid);
+        RefreshUi();
+        RefreshEquipPanel();
+    }
+
+    private static string[] GetCompatibleSlotKeys(EquipmentSlot equipSlot)
+    {
+        switch (equipSlot)
+        {
+            case EquipmentSlot.Head:
+                return new[] { HeadSlotKey };
+            case EquipmentSlot.Chest:
+                return new[] { ChestSlotKey };
+            case EquipmentSlot.Leg:
+                return new[] { LegSlotKey };
+            case EquipmentSlot.Weapon:
+                return new[] { WeaponSlot1Key, WeaponSlot2Key };
+            case EquipmentSlot.Tool:
+                return new[] { ToolSlot1Key, ToolSlot2Key };
+            case EquipmentSlot.Accessory:
+                return new[] { AccessorySlot1Key, AccessorySlot2Key, AccessorySlot3Key };
+            default:
+                return null;
+        }
+    }
+
+    private static bool AreAllSlotsEquipped(string[] slotKeys)
+    {
+        if (slotKeys == null || slotKeys.Length == 0 || GameMgr.Package == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < slotKeys.Length; i++)
+        {
+            if (GameMgr.Package.GetEquippedInventoryItem(slotKeys[i]) == null)
             {
-                infoPanel.UpdatePanelInfo(itemData);
-                
-                // 设置面板位置 (ROW_SIZE = 5)
-                int index = itemUI.ItemIndex;
-                int col = index % ROW_SIZE;
-                int row = index / ROW_SIZE; // 当前行数 (0 是第一行)
-                
-                // 获取总数据量来判断是否是最后两行
-                List<InventoryItem> allItems = await GameMgr.Package.GetItemsByType(currentType);
-                // 这里我们使用 MIN_SLOTS 或者是总格子数来判断，因为空白格也会触发
-                // 但根据需求，我们判断当前格子在总布局中的位置
-                // 假设总格子数是 totalSlots (来自 RefreshScroll 逻辑)
-                // 简单起见，我们判断 row 是否处于最后两行 (总格子 25 个则 row 为 3, 4 时是最后两行)
-                
-                RectTransform infoRect = infoPanel.GetComponent<RectTransform>();
-                RectTransform itemRect = itemUI.GetComponent<RectTransform>();
-                
-                Vector3[] corners = new Vector3[4];
-                itemRect.GetWorldCorners(corners);
-
-                // 确定水平 Pivot
-                float pivotX = (col < 3) ? 0 : 1;
-                // 确定垂直 Pivot：如果是最后两行 (row >= 3)，则向上弹出 (pivotY=0)
-                float pivotY = (row >= 3) ? 0 : 1;
-
-                infoRect.pivot = new Vector2(pivotX, pivotY);
-
-                if (col < 3)
-                {
-                    // 前三列：左对齐
-                    infoPanel.transform.position = (row >= 3) ? corners[2] : corners[3];
-                }
-                else
-                {
-                    // 后两列：右对齐
-                    infoPanel.transform.position = (row >= 3) ? corners[1] : corners[0];
-                }
+                return false;
             }
+        }
+
+        return true;
+    }
+
+    private async void ShowWeaponReplaceTip(InventoryItem inventoryItem)
+    {
+        EquipTipPanel tipPanel = await GameMgr.UI.ShowPanel<EquipTipPanel>();
+        if (tipPanel == null)
+        {
+            Debug.LogError("[PackagePanel] Failed to show EquipTipPanel.");
+            return;
+        }
+
+        tipPanel.ShowForWeaponReplacement(null, inventoryItem);
+    }
+
+    private static void RefreshEquipPanel()
+    {
+        EquipPanel equipPanel = GameMgr.UI.GetPanelWithoutLoad<EquipPanel>();
+        if (equipPanel != null && equipPanel.gameObject.activeInHierarchy)
+        {
+            equipPanel.RefreshEquipSlots();
+        }
+    }
+
+    private async void RefreshScroll()
+    {
+        int requestVersion = ++refreshVersion;
+        if (scrollView == null)
+        {
+            return;
+        }
+
+        ScrollRect scrollRect = scrollView.GetComponent<ScrollRect>();
+        if (scrollRect == null || scrollRect.content == null)
+        {
+            return;
+        }
+
+        RectTransform scrollContent = scrollRect.content;
+        itemUIByUid.Clear();
+
+        GameObject prefab = await GameMgr.AssetLoader.LoadAsset<GameObject>("PackageItemUI");
+        if (requestVersion != refreshVersion || prefab == null)
+        {
+            return;
+        }
+
+        List<InventoryItem> items = await GameMgr.Package.GetItemsByType(currentType);
+        if (requestVersion != refreshVersion)
+        {
+            return;
+        }
+
+        Dictionary<int, InventoryItem> itemBySlot = new Dictionary<int, InventoryItem>();
+        for (int i = 0; i < items.Count; i++)
+        {
+            InventoryItem item = items[i];
+            if (item == null || GameMgr.Package.IsEquipped(item.uid))
+            {
+                continue;
+            }
+
+            itemBySlot[item.slotIndex] = item;
+        }
+
+        int highestSlot = -1;
+        foreach (KeyValuePair<int, InventoryItem> pair in itemBySlot)
+        {
+            if (pair.Key > highestSlot)
+            {
+                highestSlot = pair.Key;
+            }
+        }
+
+        int totalSlots = Mathf.Max(MinSlots, highestSlot + 1);
+        if (totalSlots % RowSize != 0)
+        {
+            totalSlots += RowSize - (totalSlots % RowSize);
+        }
+
+        for (int i = 0; i < totalSlots; i++)
+        {
+            PackageItemUI ui = GetOrCreateItemUI(i, prefab, scrollContent);
+            ui.gameObject.SetActive(true);
+            itemBySlot.TryGetValue(i, out InventoryItem inventoryItem);
+            ui.Refresh(inventoryItem, this, i);
+
+            if (inventoryItem != null)
+            {
+                itemUIByUid[inventoryItem.uid] = ui;
+            }
+        }
+
+        for (int i = totalSlots; i < pooledItemUIs.Count; i++)
+        {
+            if (pooledItemUIs[i] != null)
+            {
+                pooledItemUIs[i].gameObject.SetActive(false);
+            }
+        }
+    }
+
+    private PackageItemUI GetOrCreateItemUI(int index, GameObject prefab, Transform parent)
+    {
+        if (index < pooledItemUIs.Count && pooledItemUIs[index] != null)
+        {
+            return pooledItemUIs[index];
+        }
+
+        GameObject instance = Instantiate(prefab, parent);
+        PackageItemUI ui = instance.GetComponent<PackageItemUI>();
+        pooledItemUIs.Add(ui);
+        return ui;
+    }
+
+    public void PositionItemInfoPanel(ItemInfoPanel infoPanel, PackageItemUI itemUI)
+    {
+        RectTransform infoRect = infoPanel.GetComponent<RectTransform>();
+        RectTransform itemRect = itemUI.GetComponent<RectTransform>();
+        if (infoRect == null || itemRect == null)
+        {
+            return;
+        }
+
+        int index = itemUI.ItemIndex;
+        int col = index % RowSize;
+        int row = index / RowSize;
+
+        Vector3[] corners = new Vector3[4];
+        itemRect.GetWorldCorners(corners);
+
+        float pivotX = col < 3 ? 0f : 1f;
+        float pivotY = row >= 3 ? 0f : 1f;
+        infoRect.pivot = new Vector2(pivotX, pivotY);
+
+        if (col < 3)
+        {
+            infoPanel.transform.position = row >= 3 ? corners[2] : corners[3];
+        }
+        else
+        {
+            infoPanel.transform.position = row >= 3 ? corners[1] : corners[0];
         }
     }
 }

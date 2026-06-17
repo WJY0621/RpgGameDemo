@@ -5,6 +5,14 @@
 # --- Unignore Special Files ---
 !/.gitignore
 !/README.md
+!/AGENTS.md
+!/Docs/
+!/Docs/**
+!/WorkDemoServer/
+!/WorkDemoServer/**
+/WorkDemoServer/bin/
+/WorkDemoServer/obj/
+/WorkDemoServer/Data/
 
 # --- Unignore Assets Structure ---
 !/Assets/
@@ -23,6 +31,12 @@
 !/Assets/Scripts/GameCore/
 !/Assets/Scripts/Manager/
 !/Assets/Scripts/Utils/
+!/Assets/Resources/
+# 只提交 Resources 下的 GameData 配置，忽略其余美术/第三方/大体积二进制资源
+/Assets/Resources/*
+!/Assets/Resources/GameData.meta
+!/Assets/Resources/GameData/
+!/Assets/Resources/GameData/**
 
 # --- Unity Standard Ignores (Just in case specific rules leak) ---
 /[Ll]ibrary/
