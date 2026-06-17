@@ -4,6 +4,7 @@
 
 # --- Unignore Special Files ---
 !/.gitignore
+!/.gitattributes
 !/README.md
 !/AGENTS.md
 !/WangJiayao_Resume.pdf

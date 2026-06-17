@@ -1,0 +1,11 @@
+# 把这些类型当二进制处理：避免换行符转换，并让 GitHub 正确识别/渲染（而非当作文本代码块）
+*.pdf binary
+*.docx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.glb binary
+*.vrm binary
+*.bundle binary
+*.unitypackage binary
